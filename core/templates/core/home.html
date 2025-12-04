@@ -1,0 +1,70 @@
+{% extends "core/base.html" %}
+{% block title %}Inicio{% endblock %}
+{% block content %}
+<div class="text-center">
+    <!-- Título principal -->
+    <h1 class="mb-2">KAIROS Stream Hub</h1>
+    <p class="mb-6">Controla tus cámaras y transmite con estilo.</p>
+
+    <!-- Reproductor con spinner -->
+    <div class="reproductor relative">
+        <video id="player" controls autoplay playsinline></video>
+        <div id="loading" class="absolute inset-0 flex items-center justify-center bg-black/50 text-cyan-400 font-semibold hidden">
+            Cargando transmisión...
+        </div>
+    </div>
+
+    <!-- Botones de cámara -->
+    <div x-data="{ cam: '1' }" x-init="loadCam(cam)" class="mt-4">
+        <div class="flex flex-wrap justify-center gap-3">
+            <button class="btn-stream" @click="cam = '1'; loadCam(cam)">Cámara 1</button>
+            <button class="btn-stream" @click="cam = '2'; loadCam(cam)">Cámara 2</button>
+            <button class="btn-stream" @click="cam = '3'; loadCam(cam)">Cámara 3</button>
+        </div>
+
+        <div class="badge-cam mt-4">
+            Cámara activa: <span x-text="cam"></span>
+        </div>
+    </div>
+</div>
+
+<!-- Convierte el diccionario de Python en JSON válido -->
+{{ cameras|json_script:"cameras-data" }}
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script>
+function loadCam(cam) {
+    const cameras = JSON.parse(document.getElementById('cameras-data').textContent);
+    const src = cameras[cam];
+    const video = document.getElementById('player');
+    const loading = document.getElementById('loading');
+
+    if (!src) return;
+
+    // Limpia instancia anterior si existe
+    if (window._hls) {
+        window._hls.destroy();
+        window._hls = null;
+    }
+
+    // Mostrar spinner
+    loading.classList.remove("hidden");
+
+    if (Hls.isSupported()) {
+        const hls = new Hls({ lowLatencyMode: true });
+        hls.loadSource(src);
+        hls.attachMedia(video);
+        window._hls = hls;
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            loading.classList.add("hidden");
+        });
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = src; // Safari
+        video.onloadeddata = () => loading.classList.add("hidden");
+    } else {
+        video.src = src; // Fallback simple
+        video.onloadeddata = () => loading.classList.add("hidden");
+    }
+}
+</script>
+{% endblock %}

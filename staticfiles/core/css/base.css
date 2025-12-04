@@ -1,0 +1,41 @@
+/* Estilos generales */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(to right, #1e3a8a, #2563eb); /* azul Tailwind */
+    color: #f8f9fa;
+    min-height: 100vh;
+}
+
+/* Navbar */
+.navbar {
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+
+/* Contenedor principal */
+.container {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 2rem;
+    margin-top: 2rem;
+    backdrop-filter: blur(6px);
+}
+
+/* Títulos */
+h1 {
+    color: #facc15; /* amarillo Tailwind */
+    font-weight: 700;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.4);
+}
+
+/* Botones */
+.btn-custom {
+    background-color: #facc15;
+    color: #1e3a8a;
+    font-weight: bold;
+    border-radius: 8px;
+    transition: transform 0.2s ease;
+}
+.btn-custom:hover {
+    transform: scale(1.05);
+    background-color: #fde047;
+}
