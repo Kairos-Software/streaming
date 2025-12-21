@@ -1,70 +1,177 @@
 {% extends "core/base.html" %}
-{% block title %}Inicio{% endblock %}
+{% load static %}
+
+{% block title %}Panel de Control - KAIRCAM{% endblock %}
+{% block body_class %}control-body{% endblock %}
+
 {% block content %}
-<div class="text-center">
-    <!-- Título principal -->
-    <h1 class="mb-2">KAIROS Stream Hub</h1>
-    <p class="mb-6">Controla tus cámaras y transmite con estilo.</p>
 
-    <!-- Reproductor con spinner -->
-    <div class="reproductor relative">
-        <video id="player" controls autoplay playsinline></video>
-        <div id="loading" class="absolute inset-0 flex items-center justify-center bg-black/50 text-cyan-400 font-semibold hidden">
-            Cargando transmisión...
-        </div>
+<header class="control-header">
+  <div class="control-header-container">
+
+    <!-- BRAND -->
+    <div class="control-brand">
+      <div class="logo-icon-small">
+        <span class="logo-text">KS</span>
+      </div>
+      <div class="control-brand-info">
+        <h1 class="control-brand-name">Kairos Software</h1>
+        <p class="control-brand-subtitle">Panel de Control</p>
+      </div>
     </div>
 
-    <!-- Botones de cámara -->
-    <div x-data="{ cam: '1' }" x-init="loadCam(cam)" class="mt-4">
-        <div class="flex flex-wrap justify-center gap-3">
-            <button class="btn-stream" @click="cam = '1'; loadCam(cam)">Cámara 1</button>
-            <button class="btn-stream" @click="cam = '2'; loadCam(cam)">Cámara 2</button>
-            <button class="btn-stream" @click="cam = '3'; loadCam(cam)">Cámara 3</button>
-        </div>
-
-        <div class="badge-cam mt-4">
-            Cámara activa: <span x-text="cam"></span>
-        </div>
+    <!-- ESTADO GLOBAL -->
+    <div class="header-status-badge offline" id="globalStatus">
+      <span class="status-pulse"></span>
+      SIN TRANSMISIÓN
     </div>
-</div>
 
-<!-- Convierte el diccionario de Python en JSON válido -->
-{{ cameras|json_script:"cameras-data" }}
+    <!-- USUARIO -->
+    <div class="control-user">
 
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-<script>
-function loadCam(cam) {
-    const cameras = JSON.parse(document.getElementById('cameras-data').textContent);
-    const src = cameras[cam];
-    const video = document.getElementById('player');
-    const loading = document.getElementById('loading');
+      <div class="user-avatar">
+        <span class="user-initials">
+          {{ request.user.username|slice:":2"|upper }}
+        </span>
+      </div>
 
-    if (!src) return;
+      <!-- CLICK TARGET -->
+      <div class="user-info" id="userInfo">
+        <span class="user-name">{{ request.user.username }}</span>
+        <svg class="dropdown-icon" viewBox="0 0 24 24">
+          <path d="M19 9l-7 7-7-7"/>
+        </svg>
+      </div>
 
-    // Limpia instancia anterior si existe
-    if (window._hls) {
-        window._hls.destroy();
-        window._hls = null;
-    }
+      <!-- MENU (FUERA DE user-info) -->
+      <div class="user-menu" id="userMenu">
+        {% if request.user.is_superuser %}
+          <button class="menu-item"
+                  onclick="location.href='{% url 'crear_usuario' %}'">
+            Agregar usuario
+          </button>
+          <button class="menu-item"
+                  onclick="location.href='{% url 'ver_usuarios' %}'">
+            Ver usuarios
+          </button>
+        {% endif %}
 
-    // Mostrar spinner
-    loading.classList.remove("hidden");
+        <button class="menu-item pin-option"
+                onclick="location.href='{% url 'gestionar_pin' %}'">
+          Gestionar PIN
+        </button>
 
-    if (Hls.isSupported()) {
-        const hls = new Hls({ lowLatencyMode: true });
-        hls.loadSource(src);
-        hls.attachMedia(video);
-        window._hls = hls;
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-            loading.classList.add("hidden");
-        });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = src; // Safari
-        video.onloadeddata = () => loading.classList.add("hidden");
-    } else {
-        video.src = src; // Fallback simple
-        video.onloadeddata = () => loading.classList.add("hidden");
-    }
-}
-</script>
+        <hr class="menu-divider">
+
+        <button class="menu-item"
+                onclick="location.href='{% url 'logout' %}'">
+          Cerrar sesión
+        </button>
+      </div>
+
+    </div>
+
+  </div>
+</header>
+
+<main class="control-main">
+  <div class="control-container-full">
+
+    <div class="hero-section">
+      <div class="hero-left">
+        <h1 class="hero-title">Panel de Control - Transmisión en Vivo</h1>
+        <p class="hero-subtitle">
+          Gestión dinámica de cámaras en tiempo real
+        </p>
+      </div>
+    </div>
+
+    <div class="main-grid">
+
+      <!-- ================= IZQUIERDA ================= -->
+      <div class="left-column">
+
+        <section class="cameras-section">
+          <div class="section-header">
+            <h2 class="section-title">Cámaras Conectadas</h2>
+
+            <div class="status-legends">
+              <div class="legend-item">
+                <span class="legend-dot on-air"></span> En Aire
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot ready"></span> Lista
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot pending"></span> Solicitud
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot offline"></span> Offline
+              </div>
+            </div>
+          </div>
+
+          <!-- 🔥 GRID DINÁMICO -->
+          <!--
+            JS inserta aquí cada .camera-card
+            Estructura esperada por JS:
+
+            .camera-card
+              - .camera-status-badge
+              - .camera-number-badge
+              - .camera-preview (video o placeholder)
+              - .camera-info-bar (mensajes / PIN)
+              - .camera-controls (botones)
+          -->
+          <div class="cameras-grid" id="camerasGrid"></div>
+
+        </section>
+
+      </div>
+
+      <!-- ================= DERECHA ================= -->
+      <!-- PREVIEW FINAL (se conecta a la cámara on_air) -->
+      <aside class="right-column">
+        <div class="preview-panel">
+          <div class="preview-header">
+            <h3 class="preview-title">Vista Previa Final</h3>
+          </div>
+        
+        <div class="preview-controls">
+            <button id="btnStopStream" class="btn-stop">
+                ⏹ Detener transmisión
+            </button>
+
+            <div class="volume-control">
+                🔊
+                <input
+                    type="range"
+                    id="previewVolume"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value="0"
+                >
+            </div>
+        </div>
+
+          <div class="preview-video-container" id="previewContainer">
+            <video
+              id="mainPreviewVideo"
+              autoplay
+              muted
+              playsinline
+            ></video>
+
+            <div class="preview-empty" id="previewEmpty">
+              No hay cámara al aire
+            </div>
+          </div>
+        </div>
+      </aside>
+
+    </div>
+  </div>
+</main>
+
 {% endblock %}

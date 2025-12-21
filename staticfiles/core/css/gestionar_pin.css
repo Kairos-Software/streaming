@@ -1,0 +1,343 @@
+/* ======================================================
+   GESTIONAR PIN – LAYOUT & CARD
+====================================================== */
+
+.gestion-pin-container {
+    width: 100%;
+    max-width: 500px;
+    margin: 50px auto;
+
+    background: linear-gradient(
+        180deg,
+        rgba(30, 41, 59, 0.95),
+        rgba(2, 6, 23, 0.95)
+    );
+
+    border-radius: 20px;
+    padding: 26px 28px 24px;
+
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.08),
+        0 15px 40px rgba(0, 0, 0, 0.65);
+
+    backdrop-filter: blur(14px);
+    animation: cardIn 0.35s ease-out;
+
+    color: #f8fafc;
+}
+
+@keyframes cardIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* ======================================================
+   HEADER
+====================================================== */
+
+.header-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+
+    border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.header-section h1 {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #f8fafc;
+}
+
+/* ======================================================
+   DIVISORES
+====================================================== */
+
+hr {
+    border: none;
+    border-top: 1px solid rgba(148, 163, 184, 0.15);
+    margin: 20px 0;
+}
+
+/* ======================================================
+   PIN DISPLAY
+====================================================== */
+
+.pin-display-section {
+    padding: 15px;
+    margin-bottom: 20px;
+
+    border-radius: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+
+    background: rgba(15, 23, 42, 0.75);
+}
+
+.pin-display-section h2 {
+    margin-top: 0;
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: #f1f5f9;
+}
+
+.status-success {
+    color: #86efac;
+    font-weight: 600;
+}
+
+.status-warning {
+    color: #fde68a;
+    font-weight: 600;
+}
+
+.current-pin-info {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+
+    margin: 10px 0 5px;
+}
+
+/* PIN VALUE */
+
+.pin-value-masked {
+    min-width: 80px;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #e2e8f0;
+}
+
+.pin-value-real-visible {
+    min-width: 80px;
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: #f8fafc;
+}
+
+/* ======================================================
+   BOTÓN MOSTRAR / OCULTAR PIN
+====================================================== */
+
+.btn-toggle-display {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 6px 10px;
+    font-size: 0.85rem;
+    font-weight: 500;
+
+    background: rgba(148, 163, 184, 0.15);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 8px;
+
+    color: #f8fafc;
+    cursor: pointer;
+
+    transition: background 0.15s ease;
+}
+
+.btn-toggle-display:hover {
+    background: rgba(148, 163, 184, 0.3);
+}
+
+/* EDITAR PIN */
+
+#btnEditarPin {
+    margin-left: auto;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+
+    background: rgba(59, 130, 246, 0.25);
+    border: 1px solid rgba(59, 130, 246, 0.5);
+    border-radius: 8px;
+
+    color: #e0f2fe;
+    cursor: pointer;
+
+    transition: background 0.15s ease;
+}
+
+#btnEditarPin:hover {
+    background: rgba(59, 130, 246, 0.4);
+}
+
+/* ======================================================
+   FORM
+====================================================== */
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #f1f5f9;
+}
+
+.form-section input[type="text"],
+.form-section input[type="password"] {
+    width: 100%;
+    padding: 10px 12px;
+
+    font-size: 0.9rem;
+    color: #f8fafc;
+
+    border-radius: 10px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+
+    background: rgba(15, 23, 42, 0.95);
+    outline: none;
+}
+
+.form-section input::placeholder {
+    color: #cbd5f5;
+}
+
+.form-text {
+    font-size: 0.75rem;
+    color: #cbd5f5;
+}
+
+/* ======================================================
+   TOGGLE PIN INPUT
+====================================================== */
+
+.pin-field-container {
+    position: relative;
+}
+
+.pin-field-container input {
+    padding-right: 45px;
+}
+
+.btn-toggle-pin {
+    position: absolute;
+    top: 36px;
+    right: 8px;
+
+    background: none;
+    border: none;
+
+    padding: 5px;
+    font-size: 1rem;
+    color: #e2e8f0;
+
+    cursor: pointer;
+}
+
+.btn-toggle-pin:hover {
+    color: #ffffff;
+}
+
+/* ======================================================
+   FORM ACTIONS
+====================================================== */
+
+.form-actions {
+    margin-top: 25px;
+
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* ======================================================
+   BOTÓN PRIMARY – ESTABLECER / GUARDAR PIN
+====================================================== */
+
+.btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    font-weight: 600;
+
+    background: linear-gradient(
+        180deg,
+        rgba(59, 130, 246, 0.9),
+        rgba(37, 99, 235, 0.9)
+    );
+
+    color: #f8fafc !important;
+
+    border-radius: 10px;
+    border: 1px solid rgba(147, 197, 253, 0.55);
+
+    box-shadow:
+        0 4px 12px rgba(59, 130, 246, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+
+    cursor: pointer;
+
+    transition:
+        transform 0.12s ease,
+        box-shadow 0.12s ease,
+        filter 0.12s ease;
+}
+
+.btn-primary:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+/* ======================================================
+   BOTÓN SECUNDARIO
+====================================================== */
+
+.btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    font-weight: 500;
+
+    background: rgba(148, 163, 184, 0.25);
+    border: 1px solid rgba(148, 163, 184, 0.45);
+    border-radius: 10px;
+
+    color: #f8fafc;
+    cursor: pointer;
+
+    transition: background 0.15s ease;
+}
+
+.btn-secondary:hover {
+    background: rgba(148, 163, 184, 0.4);
+}
+
+/* ======================================================
+   UTILIDADES
+====================================================== */
+
+.hidden {
+    display: none !important;
+}

@@ -11,7 +11,12 @@ SECRET_KEY = 'django-insecure-zg0x2j(fv!$23%u92=%293997w^#8kd)!5^j*=bpld^)zpkskc
 DEBUG = True
 
 # Hosts permitidos
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = [
+    "127.0.0.1",
+    "localhost",
+    "192.168.0.186",
+]
+
 
 # Aplicaciones instaladas
 INSTALLED_APPS = [
@@ -62,10 +67,10 @@ WSGI_APPLICATION = 'streaming.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'STREAMING',              # nombre exacto de la base en tu VPS
-        'USER': 'kairossoftware',         # usuario que creaste en PostgreSQL
-        'PASSWORD': 'Grupokairos25+',  # la contraseña de ese usuario
-        'HOST': '85.209.92.238',         # IP pública de tu VPS
+        'NAME': 'streaming',              # nombre exacto de la base en tu VPS
+        'USER': 'postgres',         # usuario que creaste en PostgreSQL
+        'PASSWORD': 'Psrs950599',  # la contraseña de ese usuario
+        'HOST': 'localhost',         # IP pública de tu VPS
         'PORT': '5432',                   # puerto de PostgreSQL
     }
 }
@@ -94,3 +99,8 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Tipo de clave primaria por defecto
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+LOGIN_URL = "/login/"
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/login/"

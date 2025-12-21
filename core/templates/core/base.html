@@ -1,40 +1,20 @@
-{% load static %}
 <!DOCTYPE html>
+{% load static %}
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>{% block title %}Streaming{% endblock %}</title>
-    <!-- Tailwind -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Fuente moderna -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <!-- CSS propio -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}KAIRCAM - Streaming Video Platform{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'core/css/base.css' %}">
+    {% block extra_css %}{% endblock %}
+    <meta name="csrf-token" content="{{ csrf_token }}">
 </head>
-<body class="bg-gradient-to-br from-gray-900 to-black text-gray-100 font-inter min-h-screen flex flex-col">
-
-    <!-- Navbar -->
-    <nav class="bg-gray-950 border-b border-cyan-400 shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-            <a class="text-cyan-400 font-bold text-lg tracking-wide flex items-center gap-2" href="#">
-                🎥 <span>KAIROS Stream Hub</span>
-            </a>
-        </div>
-    </nav>
-
-    <!-- Contenido principal -->
-    <main class="flex-1 w-full max-w-6xl mx-auto px-4 py-6">
-        {% block content %}{% endblock %}
-    </main>
-
-    <!-- Footer -->
-    <footer class="bg-gray-950 border-t border-gray-800 text-center py-4 text-sm text-gray-400">
-        © 2025 Kairos Streaming Hub — Todos los derechos reservados
-    </footer>
-
-    <!-- Alpine.js -->
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-    <!-- JS propio -->
+<body class="{% block body_class %}{% endblock %}">
+    {% block content %}{% endblock %}
+    
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script src="{% static 'core/js/base.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+
 </body>
 </html>

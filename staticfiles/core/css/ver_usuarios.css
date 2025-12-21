@@ -1,0 +1,256 @@
+/* ======================================================
+   BASE / RESET
+====================================================== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background:
+    radial-gradient(1000px 500px at 15% 20%, #1e293b 0%, #020617 55%);
+  color: #e5e7eb;
+}
+
+/* ======================================================
+   PAGE LAYOUT
+====================================================== */
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.shell {
+  width: 100%;
+  max-width: 1400px; /* tabla grande */
+  padding: 28px;
+}
+
+/* ======================================================
+   CARD
+====================================================== */
+.card {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(30, 41, 59, 0.95),
+      rgba(2, 6, 23, 0.95)
+    );
+  border-radius: 20px;
+  padding: 26px 28px 24px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.07),
+    0 30px 80px rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(14px);
+  animation: cardIn 0.35s ease-out;
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ======================================================
+   HEADER
+====================================================== */
+.card__header {
+  margin-bottom: 18px;
+}
+
+.card__header .title {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 600;
+}
+
+.card__header .subtitle {
+  margin: 6px 0 0;
+  font-size: 0.82rem;
+  color: #b6c2ff;
+}
+
+/* ======================================================
+   TABLE WRAP
+====================================================== */
+.table-wrap {
+  margin-top: 18px;
+  overflow-x: auto;
+  border-radius: 14px;
+}
+
+/* ======================================================
+   TABLE
+====================================================== */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  min-width: 1200px;
+}
+
+/* HEAD */
+.table thead th {
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 500;
+  color: #e2e8f0;
+  background: rgba(15, 23, 42, 0.9);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+  white-space: nowrap;
+}
+
+/* BODY */
+.table tbody td {
+  padding: 9px 12px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* ROW STATES */
+.table tbody tr:hover {
+  background: rgba(148, 163, 184, 0.06);
+}
+
+.table tbody tr.editing {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+/* EMPTY */
+.table .empty {
+  text-align: center;
+  padding: 20px;
+  color: #94a3b8;
+}
+
+/* ======================================================
+   INPUTS INLINE
+====================================================== */
+.table input[type="text"],
+.table input[type="email"] {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 0.8rem;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(15, 23, 42, 0.9);
+  color: #f8fafc;
+  outline: none;
+}
+
+.table input[type="text"]:focus,
+.table input[type="email"]:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.6);
+}
+
+/* CHECKBOX */
+.table input[type="checkbox"] {
+  transform: scale(1.1);
+  accent-color: #ef4444;
+}
+
+/* ======================================================
+   ACTIONS / BUTTONS
+====================================================== */
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* BASE BUTTON */
+.btn {
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+/* EDIT */
+.btn--edit {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+}
+
+.btn--edit:hover {
+  background: rgba(59, 130, 246, 0.25);
+}
+
+/* CONFIRM */
+.btn--confirm {
+  background: linear-gradient(180deg, #ef4444, #dc2626);
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35);
+}
+
+.btn--confirm:hover {
+  transform: translateY(-1px);
+}
+
+/* CANCEL */
+.btn--cancel {
+  background: rgba(148, 163, 184, 0.15);
+  color: #e5e7eb;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.btn--cancel:hover {
+  background: rgba(148, 163, 184, 0.25);
+}
+
+/* DELETE */
+.btn--delete {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.btn--delete:hover {
+  background: rgba(239, 68, 68, 0.25);
+}
+
+/* GHOST */
+.btn--ghost {
+  background: rgba(148, 163, 184, 0.08);
+  color: #e5e7eb;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.btn--ghost:hover {
+  background: rgba(148, 163, 184, 0.14);
+}
+
+/* ======================================================
+   FOOTER
+====================================================== */
+.card__footer {
+  margin-top: 18px;
+  text-align: right;
+}
+
+/* ======================================================
+   RESPONSIVE
+====================================================== */
+@media (max-width: 900px) {
+  .shell {
+    max-width: 100%;
+  }
+}

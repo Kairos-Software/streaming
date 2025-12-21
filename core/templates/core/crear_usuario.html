@@ -1,0 +1,112 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Panel KairCam – Crear usuario</title>
+
+  <link rel="icon" type="image/png" href="{% static 'core/images/kaircam-icon.png' %}?v=7">
+  <link rel="stylesheet" href="{% static 'core/css/crear_usuario.css' %}">
+</head>
+<body class="page">
+
+  <main class="shell">
+    <section class="card">
+
+      <!-- HEADER -->
+      <header class="card__header">
+        <img src="{% static 'core/img/logo.png' %}" alt="Logo Kairos" class="brand__logo">
+        <div class="brand__text">
+          <h1 class="title">Agregar cliente</h1>
+          <p class="subtitle">Creación de usuario + datos personales</p>
+        </div>
+      </header>
+
+      <!-- FORM -->
+      <form method="POST" class="form" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <div class="errorlist">
+            {{ form.non_field_errors }}
+          </div>
+        {% endif %}
+
+        <div class="fields fields--grid">
+
+          <!-- DATOS PERSONALES -->
+          <div class="field">
+            {{ form.nombre.label_tag }}
+            {{ form.nombre }}
+            {{ form.nombre.errors }}
+          </div>
+
+          <div class="field">
+            {{ form.apellido.label_tag }}
+            {{ form.apellido }}
+            {{ form.apellido.errors }}
+          </div>
+
+          <div class="field">
+            {{ form.dni.label_tag }}
+            {{ form.dni }}
+            {{ form.dni.errors }}
+          </div>
+
+          <div class="field">
+            {{ form.telefono.label_tag }}
+            {{ form.telefono }}
+            {{ form.telefono.errors }}
+          </div>
+
+          <div class="field field--full">
+            {{ form.direccion.label_tag }}
+            {{ form.direccion }}
+            {{ form.direccion.errors }}
+          </div>
+
+          <!-- CUENTA -->
+          <div class="field">
+            {{ form.username.label_tag }}
+            {{ form.username }}
+            {{ form.username.errors }}
+          </div>
+
+          <div class="field">
+            {{ form.email.label_tag }}
+            {{ form.email }}
+            {{ form.email.errors }}
+          </div>
+
+          <div class="field field--full">
+            {{ form.password.label_tag }}
+            {{ form.password }}
+            {{ form.password.errors }}
+          </div>
+
+        </div>
+
+        <!-- ACTIONS -->
+        <div class="actions">
+          <button type="button" class="btn btn--ghost" id="btnCancel">
+            Cancelar
+          </button>
+
+          <button type="submit" class="btn btn--primary">
+            Guardar cliente
+          </button>
+        </div>
+      </form>
+
+      <!-- FOOTER -->
+      <footer class="card__footer">
+        <span class="meta">© 2025 Grupo Kairos</span>
+      </footer>
+
+    </section>
+  </main>
+
+  <script src="{% static 'core/js/crear_usuario.js' %}"></script>
+</body>
+</html>
