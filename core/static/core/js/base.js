@@ -16,6 +16,8 @@ class CameraStatePoller {
         this.lastState = {};
         this.previewHls = null;
         this.currentPreviewUrl = null;
+        this.hasActivePreview = false;
+
         this.start();
     }
 
@@ -29,13 +31,21 @@ class CameraStatePoller {
         try {
             const res = await fetch('/estado-camaras/', { cache: 'no-store' });
             const data = await res.json();
-            if (data.ok) this.syncCameras(data.cameras);
+            if (data.ok && data.cameras) {
+                this.syncCameras(data.cameras);
+            }
         } catch (e) {
             console.warn('⚠️ Error polling cámaras', e);
         }
     }
 
     async setOnAir(camIndex) {
+        // Optimismo visual: cambiamos el estado antes de la respuesta del servidor
+        const card = document.querySelector(`.camera-card[data-camera="${camIndex}"]`);
+        if (card) {
+            this.applyState(card, { status: 'on_air' });
+        }
+
         try {
             await fetch(`/poner-al-aire/${camIndex}/`, {
                 method: 'POST',
@@ -46,26 +56,15 @@ class CameraStatePoller {
         }
     }
 
-    // ===================================
-    // SYNC CAMERAS
-    // ===================================
     syncCameras(cameras) {
         let onAirCam = null;
 
         Object.entries(cameras).forEach(([index, cam]) => {
-            let card = document.querySelector(`.camera-card[data-camera="${index}"]`);
+            let wrapper = document.querySelector(`.camera-wrapper[data-camera="${index}"]`);
+            let card = wrapper ? wrapper.querySelector('.camera-card') : null;
 
-            // crear si no existe (INCLUYE pending)
-            if (!card && cam.status !== 'offline') {
+            if (!wrapper && cam.status !== 'offline') {
                 card = this.createCameraCard(index);
-            }
-
-            // eliminar offline
-            if (cam.status === 'offline' && card) {
-                this.destroyStream(card);
-                card.remove();
-                delete this.lastState[index];
-                return;
             }
 
             if (!card) return;
@@ -83,27 +82,21 @@ class CameraStatePoller {
         this.syncPreview(onAirCam);
     }
 
-    // ===================================
-    // PREVIEW FINAL
-    // ===================================
     syncPreview(cam) {
         const video = document.getElementById('mainPreviewVideo');
         const empty = document.getElementById('previewEmpty');
         const globalStatus = document.getElementById('globalStatus');
 
         if (!cam || !cam.hls_url) {
-            this.destroyPreview();
-            video.style.display = 'none';
-            empty.style.display = 'flex';
-            globalStatus.className = 'header-status-badge offline';
-            globalStatus.innerHTML = `<span class="status-pulse"></span> SIN TRANSMISIÓN`;
+            if (this.hasActivePreview) return;
             return;
         }
 
         if (this.currentPreviewUrl === cam.hls_url) return;
-        this.currentPreviewUrl = cam.hls_url;
 
         this.destroyPreview();
+        this.currentPreviewUrl = cam.hls_url;
+        this.hasActivePreview = true;
 
         video.style.display = 'block';
         empty.style.display = 'none';
@@ -112,19 +105,19 @@ class CameraStatePoller {
             const hls = new Hls({ lowLatencyMode: true });
             hls.loadSource(cam.hls_url);
             hls.attachMedia(video);
-
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
                 video.play().catch(() => {});
             });
-
             this.previewHls = hls;
         } else {
             video.src = cam.hls_url;
             video.play().catch(() => {});
         }
 
-        globalStatus.className = 'header-status-badge on-air';
-        globalStatus.innerHTML = `<span class="status-pulse"></span> EN VIVO`;
+        if (globalStatus) {
+            globalStatus.className = 'header-status-badge on-air';
+            globalStatus.innerHTML = `<span class="status-pulse"></span> EN VIVO`;
+        }
     }
 
     destroyPreview() {
@@ -133,69 +126,128 @@ class CameraStatePoller {
             this.previewHls = null;
         }
         this.currentPreviewUrl = null;
+        this.hasActivePreview = false;
     }
 
-    // ===================================
-    // CAMERA CARD
-    // ===================================
     createCameraCard(index) {
         const grid = document.getElementById('camerasGrid');
         if (!grid) return null;
 
-        const card = document.createElement('div');
-        card.className = 'camera-card pending';
-        card.dataset.camera = index;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'camera-wrapper';
+        wrapper.dataset.camera = index;
 
-        card.innerHTML = `
-            <div class="camera-status-badge pending">SOLICITUD</div>
-            <div class="camera-number-badge">${index}</div>
-            <div class="camera-preview">
-                <div class="preview-empty">Intento de conexión detectado</div>
+        wrapper.innerHTML = `
+            <div class="camera-external-toolbar" style="display: none;">
+                <button class="tool-btn" data-action="mute" title="Mute">🎤</button>
+                <button class="tool-btn" data-action="solo" title="Solo">🎧</button>
+                <button class="tool-btn" data-action="stats" title="Stats">📊</button>
+                <button class="tool-btn btn-close" data-action="close" title="Cerrar">✕</button>
             </div>
-            <div class="camera-info-bar"></div>
+            
+            <div class="camera-card pending" data-camera="${index}">
+                <div class="camera-status-badge pending">SOLICITUD</div>
+                <div class="camera-number-badge">${index}</div>
+                <div class="camera-preview">
+                    <div class="preview-empty">Intento de conexión detectado</div>
+                </div>
+                <div class="camera-info-bar"></div>
+            </div>
+
+            <div class="camera-action-container"></div>
         `;
 
-        grid.appendChild(card);
-        return card;
+        this.bindToolbarEvents(wrapper, index);
+        grid.appendChild(wrapper);
+        return wrapper.querySelector('.camera-card');
+    }
+
+    bindToolbarEvents(wrapper, index) {
+        const btns = wrapper.querySelectorAll('.tool-btn');
+        btns.forEach(btn => {
+            btn.onclick = async () => {
+                const action = btn.dataset.action;
+                
+                if (action === 'mute') {
+                    const video = wrapper.querySelector('video');
+                    if (video) {
+                        video.muted = !video.muted;
+                        btn.textContent = video.muted ? '🔇' : '🎤';
+                        btn.classList.toggle('active', video.muted);
+                    }
+                }
+
+                if (action === 'close') {
+                    if (confirm(`¿Desconectar cámara ${index}?`)) {
+                        await fetch(`/rechazar-camara/${index}/`, {
+                            method: 'POST',
+                            headers: { 'X-CSRFToken': getCSRFToken() }
+                        });
+                    }
+                }
+            };
+        });
     }
 
     applyState(card, cam) {
+        const wrapper = card.closest('.camera-wrapper');
+        const toolbar = wrapper.querySelector('.camera-external-toolbar');
+        const actionArea = wrapper.querySelector('.camera-action-container');
         const badge = card.querySelector('.camera-status-badge');
         const preview = card.querySelector('.camera-preview');
         const bar = card.querySelector('.camera-info-bar');
 
         card.className = `camera-card ${cam.status}`;
 
+        // Control de Visibilidad de herramientas externas
+        toolbar.style.display = (cam.status === 'ready' || cam.status === 'on_air') ? 'flex' : 'none';
+
         if (cam.status === 'pending') {
-            this.destroyStream(card);
             badge.className = 'camera-status-badge pending';
             badge.textContent = 'SOLICITUD';
-            preview.innerHTML = `<div class="preview-empty">Intento de conexión detectado</div>`;
+            if (!preview.querySelector('video')) {
+                preview.innerHTML = `<div class="preview-empty">Intento de conexión detectado</div>`;
+            }
+            bar.classList.remove('hidden-bar');
+            actionArea.innerHTML = ''; // Limpiamos área externa
             this.ensurePendingActions(card);
         }
 
-        if (cam.status === 'ready') {
-            badge.className = 'camera-status-badge ready';
-            badge.textContent = 'LISTA';
+    if (cam.status === 'ready') {
+        badge.className = 'camera-status-badge ready';
+        badge.textContent = 'LISTA';
+        
+        // 1. Limpiamos la barra interna negra
+        bar.innerHTML = '';
+        bar.classList.add('hidden-bar');
 
-            bar.innerHTML = `<button class="btn-on-air">PONER AL AIRE</button>`;
-            bar.querySelector('.btn-on-air').onclick = () =>
-                this.setOnAir(card.dataset.camera);
-
-            this.ensureVideoElement(card);
-            this.attachStream(card, cam.hls_url);
+        // 2. IMPORTANTE: Inyectamos el botón en la TOOLBAR (arriba)
+        // Primero limpiamos botones previos de "Poner al Aire" para no duplicar
+        const existingOnAir = toolbar.querySelector('.btn-on-air-ext');
+        if (!existingOnAir) {
+            toolbar.insertAdjacentHTML('afterbegin', `
+                <button class="btn-action-external btn-on-air-ext">
+                    PONER AL AIRE
+                </button>
+            `);
+            toolbar.querySelector('.btn-on-air-ext').onclick = () => this.setOnAir(card.dataset.camera);
         }
+        
+        this.ensureVideoElement(card);
+        this.attachStream(card, cam.hls_url);
+    }
 
         if (cam.status === 'on_air') {
             badge.className = 'camera-status-badge on-air';
             badge.innerHTML = `<span class="badge-pulse"></span> EN AIRE`;
+            
+            // Limpiamos todo rastro de botones de acción
             bar.innerHTML = '';
+            bar.classList.add('hidden-bar');
+            actionArea.innerHTML = ''; 
         }
     }
 
-    // ===================================
-    // STREAM CARD
-    // ===================================
     ensureVideoElement(card) {
         const preview = card.querySelector('.camera-preview');
         if (preview.querySelector('video')) return;
@@ -206,29 +258,16 @@ class CameraStatePoller {
         if (!window.Hls || !Hls.isSupported() || !url) return;
         const video = card.querySelector('video');
         if (!video || video._hls) return;
-
         const hls = new Hls({ lowLatencyMode: true });
         hls.loadSource(url);
         hls.attachMedia(video);
         video._hls = hls;
     }
 
-    destroyStream(card) {
-        const video = card.querySelector('video');
-        if (video?._hls) {
-            video._hls.destroy();
-            video._hls = null;
-        }
-    }
-
-    // ===================================
-    // PENDING ACTIONS
-    // ===================================
     ensurePendingActions(card) {
         const bar = card.querySelector('.camera-info-bar');
         if (bar.dataset.bound) return;
         bar.dataset.bound = '1';
-
         const index = card.dataset.camera;
         bar.innerHTML = `
             <form class="accept-form">
@@ -239,86 +278,53 @@ class CameraStatePoller {
                 <button type="submit">Rechazar</button>
             </form>
         `;
-
         bar.querySelector('.accept-form').onsubmit = async e => {
             e.preventDefault();
             await fetch(`/autorizar-camara/${index}/`, {
                 method: 'POST',
-                headers: {
-                    'X-CSRFToken': getCSRFToken(),
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
+                headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: `pin=${encodeURIComponent(e.target.pin.value)}`
             });
         };
-
         bar.querySelector('.reject-form').onsubmit = async e => {
             e.preventDefault();
             await fetch(`/rechazar-camara/${index}/`, {
                 method: 'POST',
                 headers: { 'X-CSRFToken': getCSRFToken() }
             });
-            card.remove();
         };
     }
 }
 
 // ===================================
-// INIT
+// UTILS & INIT
 // ===================================
+function getCSRFToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.content;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     if (document.querySelector('.control-body')) {
         new ControlPanel();
         new CameraStatePoller();
     }
-});
 
-// ===================================
-// CSRF
-// ===================================
-function getCSRFToken() {
-    return document.querySelector('meta[name="csrf-token"]')?.content;
-}
-document.addEventListener('DOMContentLoaded', () => {
     const video = document.getElementById('mainPreviewVideo');
     const stopBtn = document.getElementById('btnStopStream');
     const volume = document.getElementById('previewVolume');
-
-    if (!video) return;
-
-    // 🔊 VOLUMEN
-    volume?.addEventListener('input', () => {
-        video.muted = false;
-        video.volume = volume.value;
-    });
-
-    // ⏹ DETENER TRANSMISIÓN
-    stopBtn?.addEventListener('click', async () => {
-        if (!confirm('¿Detener transmisión actual?')) return;
-
-        await fetch('/detener-transmision/', {
-            method: 'POST',
-            headers: { 'X-CSRFToken': getCSRFToken() }
+    if (video) {
+        volume?.addEventListener('input', () => { video.muted = false; video.volume = volume.value; });
+        stopBtn?.addEventListener('click', async () => {
+            if (confirm('¿Detener transmisión actual?')) {
+                await fetch('/detener-transmision/', { method: 'POST', headers: { 'X-CSRFToken': getCSRFToken() } });
+            }
         });
-    });
-});
+    }
 
-// ===================================
-// MENU
-// ===================================
-document.addEventListener('DOMContentLoaded', () => {
     const userInfo = document.getElementById('userInfo');
     const userMenu = document.getElementById('userMenu');
-
-    if (!userInfo || !userMenu) return;
-
-    userInfo.addEventListener('click', e => {
-        e.stopPropagation();
-        userMenu.style.display =
-            userMenu.style.display === 'block' ? 'none' : 'block';
-    });
-
-    document.addEventListener('click', () => {
-        userMenu.style.display = 'none';
-    });
+    if (userInfo && userMenu) {
+        userInfo.addEventListener('click', e => { e.stopPropagation(); userMenu.style.display = (userMenu.style.display === 'block' ? 'none' : 'block'); });
+        document.addEventListener('click', () => { userMenu.style.display = 'none'; });
+    }
 });

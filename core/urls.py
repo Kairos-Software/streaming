@@ -14,7 +14,6 @@ urlpatterns = [
     path("usuarios/<int:pk>/eliminar/", views.eliminar_usuario, name="eliminar_usuario"),
 
     # Streaming
-    path("set-camera/<int:cam_index>/", views.set_camera_on_air, name="set_camera_on_air"),
     path("autorizar-camara/<int:cam_index>/", views.autorizar_camara, name="autorizar_camara"),
 
     # RTMP callbacks
@@ -31,6 +30,8 @@ urlpatterns = [
 
     path("estado-camaras/", views.estado_camaras, name="estado_camaras"),
     path("poner-al-aire/<int:cam_index>/", views.poner_al_aire, name="poner_al_aire"),
+    path("audio/", views.audio, name="audio"),
+    path("tutorial/", views.tutorial, name="tutorial"),
 
 
 ]

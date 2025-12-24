@@ -10,6 +10,54 @@
     <meta name="csrf-token" content="{{ csrf_token }}">
 </head>
 <body class="{% block body_class %}{% endblock %}">
+
+    <header class="control-header">
+      <div class="control-header-container">
+
+        <div class="control-brand">
+          <div class="logo-icon-small">
+            <span class="logo-text">KS</span>
+          </div>
+          <div class="control-brand-info">
+            <h1 class="control-brand-name">Kairos Software</h1>
+            <p class="control-brand-subtitle">Panel de Control</p>
+          </div>
+        </div>
+
+        <nav class="header-main-nav">
+          <a href="{% url 'home' %}" class="nav-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}">Cámaras</a>
+          <a href="{% url 'audio' %}" class="nav-item {% if request.resolver_match.url_name == 'audio' %}active{% endif %}">Audio</a>
+          <a href="{% url 'tutorial' %}" class="nav-item {% if request.resolver_match.url_name == 'tutorial' %}active{% endif %}">Tutorial</a>
+        </nav>
+
+        <div class="header-right-side">
+            <div class="control-user">
+              <div class="user-avatar">
+                <span class="user-initials">{{ request.user.username|slice:":2"|upper }}</span>
+              </div>
+
+              <div class="user-info" id="userInfo">
+                <span class="user-name">{{ request.user.username }}</span>
+                <svg class="dropdown-icon" viewBox="0 0 24 24">
+                  <path d="M19 9l-7 7-7-7" fill="none" stroke="currentColor" stroke-width="2"/>
+                </svg>
+              </div>
+
+              <div class="user-menu" id="userMenu">
+                {% if request.user.is_superuser %}
+                  <button class="menu-item" onclick="location.href='{% url 'crear_usuario' %}'">Agregar usuario</button>
+                  <button class="menu-item" onclick="location.href='{% url 'ver_usuarios' %}'">Ver usuarios</button>
+                {% endif %}
+                <button class="menu-item pin-option" onclick="location.href='{% url 'gestionar_pin' %}'">Gestionar PIN</button>
+                <hr class="menu-divider">
+                <button class="menu-item" onclick="location.href='{% url 'logout' %}'">Cerrar sesión</button>
+              </div>
+            </div>
+        </div>
+
+      </div>
+    </header>
+
     {% block content %}{% endblock %}
     
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>

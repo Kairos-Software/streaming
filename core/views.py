@@ -9,20 +9,23 @@ from django.contrib import messages
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
 from django.views.decorators.http import require_POST
+from django.utils import timezone
+from datetime import timedelta
+from django.db import transaction
 
 
 # ===== LOGIN VIEW =====
 def login_view(request):
     if request.method == "POST":
-        username = request.POST.get("username")
-        password = request.POST.get("password")
-
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
+        user = authenticate(
+            request,
+            username=request.POST.get("username"),
+            password=request.POST.get("password"),
+        )
+        if user:
             login(request, user)
-            return redirect("home")  # redirige al home después de login
-        else:
-            return render(request, "core/login.html", {"error": "Credenciales inválidas"})
+            return redirect("home")
+        return render(request, "core/login.html", {"error": "Credenciales inválidas"})
 
     return render(request, "core/login.html")
 
@@ -34,47 +37,12 @@ def logout_view(request):
 
 @login_required
 def home(request):
-    base_url = "http://192.168.0.186:8080/hls"
-
-    # conexiones actuales del usuario
-    connections = {
-        c.cam_index: c
-        for c in StreamConnection.objects.filter(user=request.user)
-    }
-
-    cameras = []
-    current_camera_url = None
-
-    for cam_index in range(1, 7):
-        conn = connections.get(cam_index)
-
-        stream_key = f"{request.user.username}-cam{cam_index}"
-        hls_url = f"{base_url}/{stream_key}.m3u8"
-
-        status = conn.status if conn else "offline"
-
-        if status == "on_air":
-            current_camera_url = hls_url
-
-        cameras.append({
-            "index": cam_index,
-            "hls_url": hls_url,
-            "status": status,
-            "has_pending": status == "pending",
-            "has_ready": status == "ready",
-            "is_on_air": status == "on_air",
-        })
-
-    return render(request, "core/home.html", {
-        "cameras": cameras,
-        "current_camera_url": current_camera_url,
-    })
+    return render(request, "core/home.html")
 
 
 @csrf_exempt
 def validar_publicacion_stream_rtmp(request):
     stream_name = request.POST.get("name") or request.GET.get("name")
-
     if not stream_name:
         return HttpResponseForbidden("Falta stream")
 
@@ -92,104 +60,56 @@ def validar_publicacion_stream_rtmp(request):
     except (User.DoesNotExist, Cliente.DoesNotExist):
         return HttpResponseForbidden("Cliente inválido")
 
-    # 🔁 Crear o actualizar conexión (PENDING)
     StreamConnection.objects.update_or_create(
         user=user,
         cam_index=cam_index,
         defaults={
             "stream_key": stream_name,
-            "status": "pending",
+            "status": StreamConnection.Status.PENDING,
             "authorized": False,
         }
     )
 
-    # ⚠️ NO autorizamos aún
     return HttpResponse("PENDING", content_type="text/plain")
 
 
-@require_POST
 @login_required
+@require_POST
 def autorizar_camara(request, cam_index):
-    pin_ingresado = request.POST.get("pin")
-
-    if not pin_ingresado:
-        return JsonResponse(
-            {"ok": False, "error": "PIN faltante"},
-            status=400
-        )
-
-    cliente = request.user.cliente
-
-    if pin_ingresado != cliente.pin:
-        return JsonResponse(
-            {"ok": False, "error": "PIN incorrecto"},
-            status=403
-        )
+    pin = request.POST.get("pin")
+    if not pin or pin != request.user.cliente.pin:
+        return JsonResponse({"ok": False, "error": "PIN incorrecto"}, status=403)
 
     try:
-        conn = StreamConnection.objects.get(
-            user=request.user,
-            cam_index=cam_index,
-            status="pending"
-        )
+        with transaction.atomic():
+            conn = StreamConnection.objects.select_for_update().get(
+                user=request.user,
+                cam_index=cam_index,
+                status=StreamConnection.Status.PENDING,
+            )
+            conn.status = StreamConnection.Status.READY
+            conn.authorized = True
+            conn.save(update_fields=["status", "authorized"])
     except StreamConnection.DoesNotExist:
-        return JsonResponse(
-            {"ok": False, "error": "No hay solicitud pendiente"},
-            status=404
-        )
-
-    conn.status = "ready"
-    conn.authorized = True
-    conn.save()
+        return JsonResponse({"ok": False, "error": "No hay solicitud pendiente"}, status=404)
 
     return JsonResponse({"ok": True})
 
 
 @login_required
+@require_POST
 def rechazar_camara(request, cam_index):
-    if request.method != "POST":
-        return HttpResponseForbidden()
-
     StreamConnection.objects.filter(
         user=request.user,
         cam_index=cam_index,
-        status="pending"
+        status=StreamConnection.Status.PENDING,
     ).delete()
-
-    return redirect("home")
-
-
-@login_required
-def set_camera_on_air(request, cam_index):
-    if request.method != "POST":
-        return HttpResponseForbidden()
-
-    # ❌ Apagar cualquier cámara al aire
-    StreamConnection.objects.filter(
-        user=request.user,
-        status="on_air"
-    ).update(status="ready")
-
-    # ✅ Encender la nueva
-    try:
-        conn = StreamConnection.objects.get(
-            user=request.user,
-            cam_index=cam_index,
-            status="ready"
-        )
-    except StreamConnection.DoesNotExist:
-        return HttpResponseForbidden("Cámara no lista")
-
-    conn.status = "on_air"
-    conn.save()
-
-    return redirect("home")
+    return JsonResponse({"ok": True})
 
 
 @csrf_exempt
 def stream_finalizado(request):
     stream_name = request.POST.get("name") or request.GET.get("name")
-
     if not stream_name:
         return HttpResponse("NO STREAM", status=400)
 
@@ -202,20 +122,12 @@ def stream_finalizado(request):
     try:
         user = User.objects.get(username=username)
     except User.DoesNotExist:
-        return HttpResponse("USUARIO NO EXISTE", status=404)
-
-    # Buscar conexión activa
-    try:
-        conn = StreamConnection.objects.get(
-            user=user,
-            cam_index=cam_index
-        )
-    except StreamConnection.DoesNotExist:
-        # Ya estaba limpia (no pasa nada)
         return HttpResponse("OK")
 
-    # 🧹 BORRAR conexión completamente
-    conn.delete()
+    StreamConnection.objects.filter(
+        user=user,
+        cam_index=cam_index,
+    ).delete()
 
     return HttpResponse("OK")
 
@@ -316,55 +228,71 @@ def gestionar_pin(request):
     return render(request, 'core/gestionar_pin.html', context)
 
 
-@login_required
-def estado_camaras(request):
+def limpiar_conexiones_huerfanas(usuario=None, segundos_timeout=15):
     """
-    Devuelve el estado actual de todas las cámaras del usuario logueado
-    en formato JSON para polling desde el frontend.
+    Elimina conexiones de cámaras que no tuvieron actividad reciente.
+    Se considera huérfana toda conexión cuya fecha updated_at
+    sea anterior al tiempo límite definido.
     """
 
+    limite = timezone.now() - timedelta(seconds=segundos_timeout)
+
+    conexiones = StreamConnection.objects.filter(updated_at__lt=limite)
+
+    if usuario:
+        conexiones = conexiones.filter(user=usuario)
+
+    eliminadas = conexiones.count()
+    conexiones.delete()
+
+    return eliminadas
+
+
+@login_required
+def estado_camaras(request):
     conexiones = StreamConnection.objects.filter(user=request.user)
 
     data = {}
-
     for conn in conexiones:
         hls_url = None
-
-        # ready = autorizada y transmitiendo
-        # on_air = emitida en preview final (más adelante)
         if conn.status in ("ready", "on_air"):
-            # ⚠️ HLS PLANO (NO index.m3u8)
             hls_url = f"http://localhost:8080/hls/{conn.stream_key}.m3u8"
 
         data[str(conn.cam_index)] = {
             "status": conn.status,
             "authorized": conn.authorized,
-            "updated_at": conn.updated_at.isoformat(),
             "hls_url": hls_url,
         }
 
-    return JsonResponse({
-        "ok": True,
-        "cameras": data,
-    })
+    return JsonResponse({"ok": True, "cameras": data})
 
 
 @login_required
 @require_POST
 def poner_al_aire(request, cam_index):
-    # 1. bajar la que estaba al aire
-    StreamConnection.objects.filter(
-        user=request.user,
-        status="on_air"
-    ).update(status="ready")
+    with transaction.atomic():
+        StreamConnection.objects.filter(
+            user=request.user,
+            status=StreamConnection.Status.ON_AIR,
+        ).update(status=StreamConnection.Status.READY)
 
-    # 2. subir la nueva
-    StreamConnection.objects.filter(
-        user=request.user,
-        cam_index=cam_index,
-        status="ready"
-    ).update(status="on_air")
+        updated = StreamConnection.objects.filter(
+            user=request.user,
+            cam_index=cam_index,
+            status=StreamConnection.Status.READY,
+        ).update(status=StreamConnection.Status.ON_AIR)
+
+        if updated == 0:
+            return JsonResponse({"ok": False, "error": "Cámara no disponible"}, status=400)
 
     return JsonResponse({"ok": True})
 
 
+@login_required
+def audio(request):
+    return render(request, "core/audio.html")
+
+
+@login_required
+def tutorial(request):
+    return render(request, "core/tutorial.html")

@@ -5,75 +5,6 @@
 {% block body_class %}control-body{% endblock %}
 
 {% block content %}
-
-<header class="control-header">
-  <div class="control-header-container">
-
-    <!-- BRAND -->
-    <div class="control-brand">
-      <div class="logo-icon-small">
-        <span class="logo-text">KS</span>
-      </div>
-      <div class="control-brand-info">
-        <h1 class="control-brand-name">Kairos Software</h1>
-        <p class="control-brand-subtitle">Panel de Control</p>
-      </div>
-    </div>
-
-    <!-- ESTADO GLOBAL -->
-    <div class="header-status-badge offline" id="globalStatus">
-      <span class="status-pulse"></span>
-      SIN TRANSMISIÓN
-    </div>
-
-    <!-- USUARIO -->
-    <div class="control-user">
-
-      <div class="user-avatar">
-        <span class="user-initials">
-          {{ request.user.username|slice:":2"|upper }}
-        </span>
-      </div>
-
-      <!-- CLICK TARGET -->
-      <div class="user-info" id="userInfo">
-        <span class="user-name">{{ request.user.username }}</span>
-        <svg class="dropdown-icon" viewBox="0 0 24 24">
-          <path d="M19 9l-7 7-7-7"/>
-        </svg>
-      </div>
-
-      <!-- MENU (FUERA DE user-info) -->
-      <div class="user-menu" id="userMenu">
-        {% if request.user.is_superuser %}
-          <button class="menu-item"
-                  onclick="location.href='{% url 'crear_usuario' %}'">
-            Agregar usuario
-          </button>
-          <button class="menu-item"
-                  onclick="location.href='{% url 'ver_usuarios' %}'">
-            Ver usuarios
-          </button>
-        {% endif %}
-
-        <button class="menu-item pin-option"
-                onclick="location.href='{% url 'gestionar_pin' %}'">
-          Gestionar PIN
-        </button>
-
-        <hr class="menu-divider">
-
-        <button class="menu-item"
-                onclick="location.href='{% url 'logout' %}'">
-          Cerrar sesión
-        </button>
-      </div>
-
-    </div>
-
-  </div>
-</header>
-
 <main class="control-main">
   <div class="control-container-full">
 
@@ -88,7 +19,6 @@
 
     <div class="main-grid">
 
-      <!-- ================= IZQUIERDA ================= -->
       <div class="left-column">
 
         <section class="cameras-section">
@@ -111,49 +41,35 @@
             </div>
           </div>
 
-          <!-- 🔥 GRID DINÁMICO -->
-          <!--
-            JS inserta aquí cada .camera-card
-            Estructura esperada por JS:
-
-            .camera-card
-              - .camera-status-badge
-              - .camera-number-badge
-              - .camera-preview (video o placeholder)
-              - .camera-info-bar (mensajes / PIN)
-              - .camera-controls (botones)
-          -->
           <div class="cameras-grid" id="camerasGrid"></div>
 
         </section>
 
       </div>
 
-      <!-- ================= DERECHA ================= -->
-      <!-- PREVIEW FINAL (se conecta a la cámara on_air) -->
       <aside class="right-column">
         <div class="preview-panel">
           <div class="preview-header">
             <h3 class="preview-title">Vista Previa Final</h3>
           </div>
         
-        <div class="preview-controls">
+          <div class="preview-controls">
             <button id="btnStopStream" class="btn-stop">
-                ⏹ Detener transmisión
+              ⏹ Detener transmisión
             </button>
 
             <div class="volume-control">
-                🔊
-                <input
-                    type="range"
-                    id="previewVolume"
-                    min="0"
-                    max="1"
-                    step="0.05"
-                    value="0"
-                >
+              🔊
+              <input
+                type="range"
+                id="previewVolume"
+                min="0"
+                max="1"
+                step="0.05"
+                value="0"
+              >
             </div>
-        </div>
+          </div>
 
           <div class="preview-video-container" id="previewContainer">
             <video
@@ -173,5 +89,4 @@
     </div>
   </div>
 </main>
-
 {% endblock %}
