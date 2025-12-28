@@ -60,7 +60,7 @@ def validar_publicacion_stream_rtmp(request):
     except (User.DoesNotExist, Cliente.DoesNotExist):
         return HttpResponseForbidden("Cliente inválido")
 
-    StreamConnection.objects.update_or_create(
+    StreamConnection.objects.get_or_create(
         user=user,
         cam_index=cam_index,
         defaults={
@@ -230,14 +230,23 @@ def gestionar_pin(request):
 
 def limpiar_conexiones_huerfanas(usuario=None, segundos_timeout=15):
     """
-    Elimina conexiones de cámaras que no tuvieron actividad reciente.
-    Se considera huérfana toda conexión cuya fecha updated_at
-    sea anterior al tiempo límite definido.
+    Elimina conexiones de cámaras que dejaron de existir realmente.
+
+    Se considera huérfana una cámara si:
+    - Está pending, ready u on_air
+    - Y no tuvo contacto reciente con el servidor
     """
 
     limite = timezone.now() - timedelta(seconds=segundos_timeout)
 
-    conexiones = StreamConnection.objects.filter(updated_at__lt=limite)
+    conexiones = StreamConnection.objects.filter(
+        status__in=[
+            StreamConnection.Status.PENDING,
+            StreamConnection.Status.READY,
+            StreamConnection.Status.ON_AIR,
+        ],
+        conectado_en__lt=limite
+    )
 
     if usuario:
         conexiones = conexiones.filter(user=usuario)
@@ -255,7 +264,10 @@ def estado_camaras(request):
     data = {}
     for conn in conexiones:
         hls_url = None
-        if conn.status in ("ready", "on_air"):
+        if conn.status in (
+            StreamConnection.Status.READY,
+            StreamConnection.Status.ON_AIR,
+        ):
             hls_url = f"http://localhost:8080/hls/{conn.stream_key}.m3u8"
 
         data[str(conn.cam_index)] = {
@@ -265,6 +277,25 @@ def estado_camaras(request):
         }
 
     return JsonResponse({"ok": True, "cameras": data})
+
+
+@login_required
+@require_POST
+def detener_transmision(request):
+    """
+    Detiene la transmisión en vivo.
+    No desconecta cámaras, solo baja cualquier ON_AIR a READY.
+    """
+
+    actualizadas = StreamConnection.objects.filter(
+        user=request.user,
+        status=StreamConnection.Status.ON_AIR
+    ).update(status=StreamConnection.Status.READY)
+
+    return JsonResponse({
+        "ok": True,
+        "detenidas": actualizadas
+    })
 
 
 @login_required
@@ -284,6 +315,23 @@ def poner_al_aire(request, cam_index):
 
         if updated == 0:
             return JsonResponse({"ok": False, "error": "Cámara no disponible"}, status=400)
+
+    return JsonResponse({"ok": True})
+
+
+@login_required
+@require_POST
+def cerrar_camara(request, cam_index):
+    """
+    Cierra completamente una cámara:
+    - PENDING
+    - READY
+    - ON_AIR
+    """
+    StreamConnection.objects.filter(
+        user=request.user,
+        cam_index=cam_index
+    ).delete()
 
     return JsonResponse({"ok": True})
 

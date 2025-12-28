@@ -32,6 +32,8 @@ urlpatterns = [
     path("poner-al-aire/<int:cam_index>/", views.poner_al_aire, name="poner_al_aire"),
     path("audio/", views.audio, name="audio"),
     path("tutorial/", views.tutorial, name="tutorial"),
+    path('detener-transmision/', views.detener_transmision, name='detener_transmision'),
+    path('cerrar-camara/<int:cam_index>/', views.cerrar_camara, name='cerrar_camara'),
 
 
 ]

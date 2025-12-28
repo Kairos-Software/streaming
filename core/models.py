@@ -31,7 +31,6 @@ class StreamConnection(models.Model):
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     cam_index = models.PositiveIntegerField()
-
     stream_key = models.CharField(max_length=100)
 
     status = models.CharField(
@@ -41,7 +40,16 @@ class StreamConnection(models.Model):
     )
 
     authorized = models.BooleanField(default=False)
-    connected_at = models.DateTimeField(auto_now_add=True)
+
+    conectado_en = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Momento en que nginx detectó la conexión RTMP"
+    )
+
+    ultimo_contacto = models.DateTimeField(
+        auto_now=True,
+        help_text="Última señal recibida desde nginx RTMP"
+    )
 
     class Meta:
         unique_together = ("user", "cam_index")
