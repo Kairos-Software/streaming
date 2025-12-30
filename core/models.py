@@ -53,3 +53,30 @@ class StreamConnection(models.Model):
 
     class Meta:
         unique_together = ("user", "cam_index")
+
+
+class CanalTransmision(models.Model):
+    usuario = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="canal_transmision"
+    )
+
+    en_vivo = models.BooleanField(default=False)
+
+    url_hls = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="URL HLS pública del stream final"
+    )
+
+    inicio_transmision = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        estado = "EN VIVO" if self.en_vivo else "OFFLINE"
+        return f"{self.usuario.username} - {estado}"
