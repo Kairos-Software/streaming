@@ -21,9 +21,14 @@ class PanelConsumer(AsyncJsonWebsocketConsumer):
     # HANDLERS
     # ======================
     async def estado_camaras(self, event):
-        await self.send_json({"tipo": "estado_camaras", "cameras": event.get("cameras", {})})
+        """Envía el estado completo de todas las cámaras (snapshot inicial)"""
+        await self.send_json({
+            "tipo": "estado_camaras", 
+            "cameras": event.get("cameras", {})
+        })
 
     async def camara_actualizada(self, event):
+        """Envía la actualización de UNA cámara específica"""
         await self.send_json({
             "tipo": "camara_actualizada",
             "cam_index": event.get("cam_index"),
@@ -33,11 +38,16 @@ class PanelConsumer(AsyncJsonWebsocketConsumer):
         })
 
     async def camara_eliminada(self, event):
-        await self.send_json({"tipo": "camara_eliminada", "cam_index": event.get("cam_index")})
+        """Notifica que una cámara fue eliminada"""
+        await self.send_json({
+            "tipo": "camara_eliminada", 
+            "cam_index": event.get("cam_index")
+        })
 
     async def estado_canal(self, event):
+        """Notifica el estado del canal de transmisión (preview principal)"""
         await self.send_json({
             "tipo": "estado_canal",
             "en_vivo": event.get("en_vivo", False),
-            "url_hls": event.get("url_hls")
+            "hls_url": event.get("hls_url")  # ← CRÍTICO: debe incluir hls_url
         })

@@ -1,0 +1,181 @@
+{% extends 'core/ajustes/base_ajustes.html' %}
+
+{% block settings_content %}
+<style>
+    /* === ESTILOS MODERNOS (Variables Globales) === */
+    .connection-group {
+        position: relative;
+        margin-bottom: 30px;
+    }
+
+    .input-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .copy-input {
+        width: 100%;
+        background-color: var(--bg-primary); /* Fondo oscuro tema */
+        border: 1px solid var(--border-medium);
+        color: var(--text-secondary);
+        padding: 14px 110px 14px 18px; /* Espacio derecha para botones */
+        border-radius: var(--radius-md);
+        font-family: 'Courier New', monospace;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+    }
+    
+    .copy-input:focus {
+        outline: none;
+        border-color: var(--brand-red); /* Rojo marca */
+        color: var(--text-primary);
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+    }
+
+    /* Botones flotantes dentro del input */
+    .input-actions {
+        position: absolute;
+        right: 8px;
+        display: flex;
+        gap: 4px;
+        height: 100%;
+        align-items: center;
+    }
+
+    .action-btn {
+        background: transparent;
+        border: 1px solid transparent;
+        color: var(--text-secondary);
+        width: 34px;
+        height: 34px;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        padding: 0;
+    }
+
+    .action-btn:hover {
+        background: var(--bg-elevated);
+        color: var(--text-primary);
+        border-color: var(--border-subtle);
+    }
+    
+    .action-btn svg {
+        width: 18px;
+        height: 18px;
+        stroke-width: 2;
+    }
+
+    /* Animación de copiado exitoso (Verde) */
+    .action-btn.copied {
+        color: var(--status-ready) !important;
+        border-color: rgba(16, 185, 129, 0.2);
+        background: rgba(16, 185, 129, 0.1);
+    }
+
+    /* Caja de advertencia estilo Marcos */
+    .warning-box {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        color: #fca5a5;
+        padding: 16px;
+        border-radius: var(--radius-md);
+        font-size: 0.9rem;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin-top: 25px;
+    }
+</style>
+
+<div class="settings-card">
+    <h2>Conexiones de Transmisión</h2>
+    <p class="settings-desc">
+        Configura tu software de streaming (OBS, vMix) con estos credenciales para emitir en vivo.
+    </p>
+
+    <div class="connection-group">
+        <label>URL del Servidor (RTMP)</label>
+        <div class="input-wrapper">
+            <input type="text" class="copy-input" value="{{ rtmp_url }}" readonly id="urlInput">
+            <div class="input-actions">
+                <button class="action-btn" onclick="copiarTexto('urlInput', this)" title="Copiar URL">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="connection-group">
+        <label>Clave de Transmisión (Stream Key)</label>
+        <div class="input-wrapper">
+            <input type="password" class="copy-input" value="{{ stream_key }}" readonly id="keyInput" style="font-weight: bold; letter-spacing: 2px;">
+            
+            <div class="input-actions">
+                <button class="action-btn" onclick="toggleVisibility('keyInput', this)" title="Mostrar/Ocultar">
+                    <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="display: none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                </button>
+                
+                <button class="action-btn" onclick="copiarTexto('keyInput', this)" title="Copiar Clave">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+            </div>
+        </div>
+        <small style="color: var(--text-tertiary); margin-top: 8px; display: block;">
+            Esta clave es única para tu usuario. No la compartas.
+        </small>
+    </div>
+
+    <div class="warning-box">
+        <svg style="min-width: 24px;" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        <div>
+            <strong>¡Información Confidencial!</strong><br>
+            Cualquier persona con esta clave puede transmitir en tu canal haciéndose pasar por ti. Si crees que ha sido comprometida, contacta al administrador.
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function copiarTexto(elementId, btn) {
+        var copyText = document.getElementById(elementId);
+        var originalIcon = btn.innerHTML;
+        
+        // Copiar al portapapeles
+        navigator.clipboard.writeText(copyText.value).then(function() {
+            // Feedback Visual: Cambiar icono a check verde temporalmente
+            btn.classList.add('copied');
+            btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+            
+            setTimeout(() => {
+                btn.classList.remove('copied');
+                btn.innerHTML = originalIcon;
+            }, 2000);
+            
+        }, function(err) {
+            console.error('Error al copiar: ', err);
+        });
+    }
+
+    function toggleVisibility(elementId, btn) {
+        var input = document.getElementById(elementId);
+        var eye = btn.querySelector('.icon-eye');
+        var eyeOff = btn.querySelector('.icon-eye-off');
+
+        if (input.type === "password") {
+            input.type = "text";
+            eye.style.display = 'none';
+            eyeOff.style.display = 'block';
+        } else {
+            input.type = "password";
+            eye.style.display = 'block';
+            eyeOff.style.display = 'none';
+        }
+    }
+</script>
+{% endblock %}

@@ -1,8 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
 
-
 class Cliente(models.Model):
+    # --- DATOS PERSONALES Y DE CUENTA ---
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="cliente")
     nombre = models.CharField(max_length=100)
     apellido = models.CharField(max_length=100)
@@ -17,12 +17,30 @@ class Cliente(models.Model):
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
 
+    # --- PERFIL PÚBLICO (REDES SOCIALES Y BIO) ---
+    bio = models.TextField(blank=True, null=True, verbose_name="Biografía")
+    instagram = models.CharField(max_length=200, blank=True, null=True)
+    x_twitter = models.CharField(max_length=200, blank=True, null=True)
+    facebook = models.CharField(max_length=200, blank=True, null=True)
+    youtube = models.CharField(max_length=200, blank=True, null=True)
+    discord = models.CharField(max_length=200, blank=True, null=True)
+    tiktok = models.CharField(max_length=200, blank=True, null=True)
+
+    # --- NUEVOS CAMPOS: PREFERENCIAS DE SITIO ---
+    pref_autoplay = models.BooleanField(default=True, verbose_name="Reproducción Automática")
+    pref_modo_teatro = models.BooleanField(default=False, verbose_name="Modo Teatro por defecto")
+    pref_emails = models.BooleanField(default=True, verbose_name="Recibir notificaciones por correo")
+
+    # --- CONFIGURACIÓN DE NOTIFICACIONES ---
+    notif_live = models.BooleanField(default=True, verbose_name="Alerta de Transmisión")
+    notif_chat_mentions = models.BooleanField(default=True, verbose_name="Menciones en Chat")
+    notif_marketing = models.BooleanField(default=False, verbose_name="Novedades y Ofertas")
+
     def __str__(self):
         return f"{self.nombre} {self.apellido} ({self.user.email})"
 
 
 class StreamConnection(models.Model):
-
     class Status(models.TextChoices):
         PENDING = "pending", "Pendiente"
         READY = "ready", "Lista"

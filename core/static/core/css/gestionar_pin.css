@@ -1,135 +1,275 @@
-/* ======================================================
-   GESTIONAR PIN – POSICIÓN Y ESTILO COMBINADO
-====================================================== */
-
-/* 1. POSICIÓN: Centrado total en pantalla */
-body {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+/* === LAYOUT & ESPACIADO === */
+.pin-page-container {
+    background-color: var(--bg-primary);
     min-height: 100vh;
-    margin: 0;
-    background-color: #05070a; /* Fondo ultra oscuro de la app */
+    width: 100%;
+    /* LA SOLUCIÓN: Empujar el contenido hacia abajo */
+    padding-top: 120px; 
+    padding-bottom: 60px;
+    display: flex;
+    justify-content: center;
 }
 
-/* 2. ESTILO: Card inspirada en la segunda imagen */
-.gestion-pin-container {
-    width: 90%;
-    max-width: 550px;
-    background: linear-gradient(145deg, #1a2332 0%, #0a0e1a 100%);
-    border-radius: 24px;
-    padding: 40px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8);
-    color: #ffffff;
-    animation: cardIn 0.4s ease-out;
+.pin-content-wrapper {
+    width: 100%;
+    max-width: 600px; /* Ancho controlado para que se vea elegante */
+    padding: 0 20px;
 }
 
-@keyframes cardIn {
-    from { opacity: 0; transform: translateY(10px); }
+/* === ENCABEZADO === */
+.pin-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.page-title {
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #fff 0%, #9ca3af 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.page-subtitle {
+    color: var(--text-tertiary);
+    font-size: 1rem;
+}
+
+/* === TARJETA === */
+.pin-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    padding: 32px;
+    box-shadow: var(--shadow-lg);
+    animation: slideUp 0.4s ease-out;
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* ======================================================
-   HEADER (Estilo de la imagen 2)
-====================================================== */
-.header-section {
+.card-header-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 30px;
 }
 
-.header-section h1 {
-    font-size: 1.5rem;
-    font-weight: 800;
-    color: #ffffff;
+.section-subtitle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-size: 1.1rem;
 }
 
-/* Botón Volver (Estilo Ghost/Oscuro) */
-.btn-volver {
-    background: rgba(255, 255, 255, 0.05) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    color: #94a3b8 !important;
-    padding: 8px 16px;
-    border-radius: 8px;
+.btn-back {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: color 0.2s;
 }
+.btn-back:hover { color: var(--brand-red); }
+.btn-back svg { width: 16px; height: 16px; }
 
-/* ======================================================
-   PIN DISPLAY (Sección interna azulada)
-====================================================== */
-.pin-display-section {
-    background: rgba(15, 23, 42, 0.4);
-    border: 1px solid rgba(59, 130, 246, 0.1);
-    border-radius: 16px;
-    padding: 25px;
+/* === ESTADOS DEL PIN === */
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
     margin-bottom: 20px;
 }
 
-.pin-display-section h2 {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    color: #94a3b8;
-    margin-bottom: 10px;
+.status-indicator.active {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--status-ready);
+    border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
-/* Estilo de los puntos del PIN (Azules como en la imagen) */
-.pin-value-masked {
-    font-size: 2rem;
-    color: #3b82f6; /* El azul brillante de los puntos */
-    letter-spacing: 6px;
-    font-weight: bold;
+.status-indicator.warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--status-pending);
+    border: 1px solid rgba(245, 158, 11, 0.2);
 }
 
-.status-success {
-    color: #ffffff;
-    font-weight: 500;
-    margin-bottom: 15px;
-    font-size: 0.95rem;
+.dot {
+    width: 6px; height: 6px;
+    background: currentColor;
+    border-radius: 50%;
 }
 
-/* ======================================================
-   BOTONES (Estilo Imagen 2)
-====================================================== */
+.current-pin-display {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-medium);
+    padding: 20px;
+    border-radius: var(--radius-md);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
 
-/* Botón Editar PIN (Azul Sólido) */
-#btnEditarPin, .btn-primary {
-    background: #3b82f6 !important;
-    color: white !important;
-    border: none !important;
-    padding: 12px 24px;
-    border-radius: 8px;
+.pin-text {
+    font-family: monospace;
+    font-size: 1.5rem;
+    letter-spacing: 4px;
+    color: var(--text-primary);
     font-weight: 700;
-    font-size: 0.9rem;
-    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-}
-
-/* Botón Mostrar PIN (Estilo oscuro) */
-#btnTogglePin, .btn-secondary:not(.btn-volver) {
-    background: #1a2332 !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    color: #94a3b8 !important;
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-weight: 600;
-}
-
-/* Inputs del Formulario */
-.form-section input {
-    background: #05070a !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    border-radius: 10px !important;
-    padding: 14px !important;
-    color: white !important;
-}
-
-.text-muted {
-    display: block;
-    margin-top: 15px;
-    color: #64748b;
-    font-size: 0.8rem;
 }
 
 .hidden { display: none !important; }
-hr { border: 0; border-top: 1px solid rgba(255, 255, 255, 0.05); margin: 30px 0; }
+
+/* Botón Ojo */
+.btn-icon-action {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+.btn-icon-action:hover { background: var(--bg-elevated); color: var(--text-primary); }
+.btn-icon-action svg { width: 20px; height: 20px; }
+
+/* === BOTONES Y FORMULARIOS === */
+.action-row { text-align: right; }
+
+.btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border-medium);
+    color: var(--text-secondary);
+    padding: 10px 20px;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-secondary:hover { border-color: var(--text-primary); color: var(--text-primary); }
+
+.btn-primary {
+    background: var(--brand-red);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: var(--radius-md);
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-primary:hover { background: var(--brand-red-dark); transform: translateY(-1px); }
+
+.empty-state-text {
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+/* === FORMULARIO EDICIÓN === */
+.section-divider {
+    height: 1px;
+    background: var(--border-subtle);
+    margin: 30px 0;
+}
+
+.form-title {
+    color: var(--text-primary);
+    margin-bottom: 20px;
+    font-size: 1.2rem;
+}
+
+.form-group { margin-bottom: 25px; }
+
+.form-group label {
+    display: block;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.settings-input {
+    width: 100%;
+    background-color: var(--bg-primary); 
+    border: 1px solid var(--border-medium);
+    color: var(--text-primary);
+    padding: 12px 16px;
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+    font-family: monospace;
+    letter-spacing: 2px;
+    box-sizing: border-box;
+}
+
+.settings-input:focus {
+    outline: none;
+    border-color: var(--brand-red); 
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
+.form-group small {
+    display: block;
+    margin-top: 8px;
+    color: var(--text-tertiary);
+    font-size: 0.85rem;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.btn-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-weight: 600;
+}
+.btn-ghost:hover { color: var(--text-primary); }
+
+.btn-save {
+    background: var(--status-ready); /* Verde para guardar */
+    color: white;
+    border: none;
+    padding: 10px 24px;
+    border-radius: var(--radius-md);
+    font-weight: 700;
+    cursor: pointer;
+}
+.btn-save:hover { background: #059669; }
+
+/* === MENSAJES === */
+.status-message {
+    padding: 12px 16px;
+    border-radius: var(--radius-md);
+    margin-bottom: 20px;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+.status-message.success {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--status-ready);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+.status-message.error {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--brand-red);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}

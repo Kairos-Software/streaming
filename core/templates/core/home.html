@@ -8,7 +8,6 @@
 <main class="control-main">
   <div class="control-container-full">
 
-    <!-- Hero Section -->
     <div class="hero-section">
       <div class="hero-content">
         <div class="hero-left">
@@ -37,9 +36,7 @@
 
     <div class="main-grid">
 
-      <!-- Columna de Cámaras -->
       <div class="left-column">
-
         <section class="cameras-section">
           <div class="section-header">
             <div class="section-title-group">
@@ -73,12 +70,9 @@
             <div class="empty-text">No hay cámaras conectadas</div>
             <div class="empty-hint">Las cámaras aparecerán automáticamente al conectarse</div>
           </div>
-
         </section>
-
       </div>
 
-      <!-- Columna de Preview -->
       <aside class="right-column">
         <div class="preview-panel">
           
@@ -94,12 +88,7 @@
           </div>
         
           <div class="preview-video-container" id="previewContainer">
-            <video
-              id="mainPreviewVideo"
-              autoplay
-              muted
-              playsinline
-            ></video>
+            <video id="mainPreviewVideo" autoplay muted playsinline></video>
 
             <div class="preview-empty" id="previewEmpty">
               <div class="preview-empty-content">
@@ -112,7 +101,6 @@
               </div>
             </div>
 
-            <!-- Overlay de información -->
             <div class="preview-overlay" id="previewOverlay" style="display: none;">
               <div class="preview-info">
                 <span class="preview-camera-label">CAM <span id="previewCamNumber">-</span></span>
@@ -133,14 +121,7 @@
               <svg viewBox="0 0 24 24" class="volume-icon">
                 <path d="M11 5L6 9H2v6h4l5 4V5zM19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" stroke="currentColor" stroke-width="2" fill="none"/>
               </svg>
-              <input
-                type="range"
-                id="previewVolume"
-                min="0"
-                max="1"
-                step="0.05"
-                value="0"
-              >
+              <input type="range" id="previewVolume" min="0" max="1" step="0.05" value="0">
               <span class="volume-value" id="volumeValue">0%</span>
             </div>
           </div>
@@ -151,7 +132,6 @@
     </div>
   </div>
 </main>
-
 {% endblock %}
 
 {% block extra_js %}

@@ -1,0 +1,73 @@
+{% extends 'core/ajustes/base_ajustes.html' %}
+
+{% block settings_content %}
+<div class="settings-card">
+    <h2>Perfil Público</h2>
+    <p class="settings-desc">Administra tu información personal y cómo te ven los demás usuarios.</p>
+    
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div class="section-subtitle">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" color="var(--brand-red)"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            Información de Cuenta
+        </div>
+        
+        <div class="form-group">
+            <label>Nombre de usuario</label>
+            {{ form.username }}
+            {% if form.username.errors %}<small style="color: var(--brand-red)">{{ form.username.errors.0 }}</small>{% endif %}
+        </div>
+
+        <div class="form-group">
+            <label>Correo Electrónico</label>
+            {{ form.email }}
+        </div>
+
+        <div class="form-group">
+            <label>Biografía</label>
+            {{ form.bio }}
+            <small style="color: var(--text-tertiary); display: block; margin-top: 6px; font-size: 0.8rem;">Cuéntale a tus espectadores un poco sobre ti.</small>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <div class="section-subtitle">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" color="var(--text-secondary)"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
+            Redes Sociales
+        </div>
+        
+        <div class="form-group">
+            <label>Instagram</label>
+            {{ form.instagram }}
+        </div>
+
+        <div class="form-group">
+            <label>X (Twitter)</label>
+            {{ form.x_twitter }}
+        </div>
+
+        <div class="form-group">
+            <label>YouTube</label>
+            {{ form.youtube }}
+        </div>
+
+        <div class="form-group">
+            <label>Discord</label>
+            {{ form.discord }}
+        </div>
+
+        <div class="form-group">
+            <label>TikTok</label>
+            {{ form.tiktok }}
+        </div>
+
+        <div style="overflow: hidden; margin-top: 40px;">
+            <button type="submit" class="btn-save">
+                Guardar Cambios
+            </button>
+        </div>
+
+    </form>
+</div>
+{% endblock %}

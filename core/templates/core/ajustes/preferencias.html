@@ -1,0 +1,133 @@
+{% extends 'core/ajustes/base_ajustes.html' %}
+
+{% block settings_content %}
+<style>
+    /* ESTILO PARA LOS INTERRUPTORES (SWITCHES) */
+    .preference-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 25px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .preference-info h4 {
+        margin: 0 0 5px 0;
+        color: white;
+        font-size: 1.1rem;
+    }
+
+    .preference-info p {
+        margin: 0;
+        color: #9ca3af;
+        font-size: 0.9rem;
+    }
+
+    /* El contenedor del switch */
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 26px;
+    }
+
+    /* Ocultamos el checkbox real */
+    .switch input { 
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    /* El deslizador (la parte visual) */
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #374151; /* Gris apagado */
+        transition: .4s;
+        border-radius: 34px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 20px;
+        width: 20px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+
+    /* Cuando está activado (checked) */
+    input:checked + .slider {
+        background-color: #10b981; /* Verde Kaircam */
+        box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(24px);
+    }
+
+    /* Efecto Hover */
+    .switch:hover .slider {
+        background-color: #4b5563;
+    }
+    input:checked:hover + .slider {
+        background-color: #059669;
+    }
+</style>
+
+<div class="settings-card">
+    <h2>Preferencias de Sitio</h2>
+    <p style="color: #9ca3af; margin-bottom: 30px;">Personaliza cómo interactúas con la plataforma.</p>
+
+    <form method="POST">
+        {% csrf_token %}
+
+        <div class="preference-item">
+            <div class="preference-info">
+                <h4>Reproducción Automática</h4>
+                <p>Iniciar los videos automáticamente al entrar en un canal.</p>
+            </div>
+            <label class="switch">
+                {{ form.pref_autoplay }}
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="preference-item">
+            <div class="preference-info">
+                <h4>Modo Teatro por defecto</h4>
+                <p>Usar el reproductor expandido al cargar una transmisión.</p>
+            </div>
+            <label class="switch">
+                {{ form.pref_modo_teatro }}
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="preference-item" style="border-bottom: none;">
+            <div class="preference-info">
+                <h4>Correos Electrónicos</h4>
+                <p>Recibir novedades, alertas de seguridad y actualizaciones.</p>
+            </div>
+            <label class="switch">
+                {{ form.pref_emails }}
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div style="margin-top: 40px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px; overflow: hidden;">
+            <button type="submit" class="btn-save">
+                Guardar Preferencias
+            </button>
+        </div>
+
+    </form>
+</div>
+{% endblock %}

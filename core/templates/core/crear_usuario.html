@@ -1,112 +1,53 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Panel KairCam – Crear usuario</title>
+{% extends "core/base.html" %}
 
-  <link rel="icon" type="image/png" href="{% static 'core/images/kaircam-icon.png' %}?v=7">
-  <link rel="stylesheet" href="{% static 'core/css/crear_usuario.css' %}">
-</head>
-<body class="page">
+{% block title %}Crear Usuario - KAIRCAM{% endblock %}
 
-  <main class="shell">
-    <section class="card">
-
-      <!-- HEADER -->
-      <header class="card__header">
-        <img src="{% static 'core/img/logo.png' %}" alt="Logo Kairos" class="brand__logo">
-        <div class="brand__text">
-          <h1 class="title">Agregar cliente</h1>
-          <p class="subtitle">Creación de usuario + datos personales</p>
+{% block content %}
+<div class="studio-card">
+    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
+        <div>
+            <h2 class="studio-title">Nuevo Cliente</h2>
+            <p class="studio-subtitle">Registrar usuario para streaming</p>
         </div>
-      </header>
+        <div style="background: rgba(16, 185, 129, 0.1); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--status-ready);">
+            <i class="fas fa-user-plus"></i>
+        </div>
+    </div>
 
-      <!-- FORM -->
-      <form method="POST" class="form" novalidate>
+    <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
+        
+        {% for field in form %}
+            <div class="form-group-studio">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}
+                    <span class="helptext">{{ field.help_text }}</span>
+                {% endif %}
+                {% if field.errors %}
+                    <span style="color: var(--brand-red); font-size: 12px; font-weight: bold;">
+                        {{ field.errors.0 }}
+                    </span>
+                {% endif %}
+            </div>
+        {% endfor %}
 
-        {% if form.non_field_errors %}
-          <div class="errorlist">
-            {{ form.non_field_errors }}
-          </div>
-        {% endif %}
-
-        <div class="fields fields--grid">
-
-          <!-- DATOS PERSONALES -->
-          <div class="field">
-            {{ form.nombre.label_tag }}
-            {{ form.nombre }}
-            {{ form.nombre.errors }}
-          </div>
-
-          <div class="field">
-            {{ form.apellido.label_tag }}
-            {{ form.apellido }}
-            {{ form.apellido.errors }}
-          </div>
-
-          <div class="field">
-            {{ form.dni.label_tag }}
-            {{ form.dni }}
-            {{ form.dni.errors }}
-          </div>
-
-          <div class="field">
-            {{ form.telefono.label_tag }}
-            {{ form.telefono }}
-            {{ form.telefono.errors }}
-          </div>
-
-          <div class="field field--full">
-            {{ form.direccion.label_tag }}
-            {{ form.direccion }}
-            {{ form.direccion.errors }}
-          </div>
-
-          <!-- CUENTA -->
-          <div class="field">
-            {{ form.username.label_tag }}
-            {{ form.username }}
-            {{ form.username.errors }}
-          </div>
-
-          <div class="field">
-            {{ form.email.label_tag }}
-            {{ form.email }}
-            {{ form.email.errors }}
-          </div>
-
-          <div class="field field--full">
-            {{ form.password.label_tag }}
-            {{ form.password }}
-            {{ form.password.errors }}
-          </div>
-
+        <div style="display: flex; gap: 12px; margin-top: 32px;">
+            <a href="{% url 'home' %}" class="btn-studio btn-studio-secondary" style="flex: 1; text-align: center; justify-content: center;">
+                Cancelar
+            </a>
+            <button type="submit" class="btn-studio" style="flex: 2;">
+                Guardar Cliente
+            </button>
         </div>
+    </form>
+</div>
 
-        <!-- ACTIONS -->
-        <div class="actions">
-          <button type="button" class="btn btn--ghost" id="btnCancel">
-            Cancelar
-          </button>
-
-          <button type="submit" class="btn btn--primary">
-            Guardar cliente
-          </button>
-        </div>
-      </form>
-
-      <!-- FOOTER -->
-      <footer class="card__footer">
-        <span class="meta">© 2025 Grupo Kairos</span>
-      </footer>
-
-    </section>
-  </main>
-
-  <script src="{% static 'core/js/crear_usuario.js' %}"></script>
-</body>
-</html>
+<style>
+    /* Aseguramos que los inputs generados por {{ field }} tomen el ancho completo */
+    .form-group-studio input, .form-group-studio select, .form-group-studio textarea {
+        width: 100%;
+        box-sizing: border-box;
+    }
+</style>
+{% endblock %}

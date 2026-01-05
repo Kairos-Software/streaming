@@ -1,0 +1,112 @@
+{% extends 'core/ajustes/base_ajustes.html' %}
+
+{% block settings_content %}
+<style>
+    /* Reutilizamos los estilos de switches de Preferencias */
+    .preference-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 25px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .preference-info h4 {
+        margin: 0 0 5px 0;
+        color: white;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+    }
+    
+    .preference-info h4 i {
+        margin-right: 10px;
+        color: #8b5cf6; /* Color morado para iconos */
+        width: 20px;
+        text-align: center;
+    }
+
+    .preference-info p {
+        margin: 0 0 0 34px; /* Indentación para alinear con el texto del título */
+        color: #9ca3af;
+        font-size: 0.9rem;
+    }
+
+    /* Switch CSS (Copia exacta para mantener consistencia) */
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 26px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-color: #374151;
+        transition: .4s;
+        border-radius: 34px;
+    }
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 20px; width: 20px;
+        left: 3px; bottom: 3px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+    input:checked + .slider { background-color: #ec4899; /* Rosa para notificaciones */ }
+    input:checked + .slider:before { transform: translateX(24px); }
+</style>
+
+<div class="settings-card">
+    <h2>Notificaciones</h2>
+    <p style="color: #9ca3af; margin-bottom: 30px;">Elige qué alertas quieres recibir en tu panel y correo.</p>
+
+    <form method="POST">
+        {% csrf_token %}
+
+        <div class="preference-item">
+            <div class="preference-info">
+                <h4><i class="fas fa-broadcast-tower"></i> Canales en Vivo</h4>
+                <p>Recibir una alerta cuando un canal que sigues inicie transmisión.</p>
+            </div>
+            <label class="switch">
+                {{ form.notif_live }}
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="preference-item">
+            <div class="preference-info">
+                <h4><i class="fas fa-at"></i> Menciones en Chat</h4>
+                <p>Avisarme cuando alguien me etiquete (@usuario) en un chat.</p>
+            </div>
+            <label class="switch">
+                {{ form.notif_chat_mentions }}
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="preference-item" style="border-bottom: none;">
+            <div class="preference-info">
+                <h4><i class="fas fa-gift"></i> Novedades y Regalos</h4>
+                <p>Enterarme de nuevas funciones, eventos o regalos de suscripciones.</p>
+            </div>
+            <label class="switch">
+                {{ form.notif_marketing }}
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div style="margin-top: 40px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px; overflow: hidden;">
+            <button type="submit" class="btn-save">
+                Guardar Notificaciones
+            </button>
+        </div>
+
+    </form>
+</div>
+{% endblock %}

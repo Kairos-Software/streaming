@@ -1,212 +1,333 @@
+import qrcode
+import io
+import base64
+from datetime import timedelta
+
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
+from django.contrib.auth.forms import PasswordChangeForm
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.contrib import messages
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from django.utils import timezone
-from django.db import transaction
-from datetime import timedelta
-from .forms import ClienteForm, PinForm
+from django.conf import settings
+
+# --- TERCEROS ---
+from django_otp.plugins.otp_totp.models import TOTPDevice
+
+# --- LOCALES ---
+from .forms import ClienteForm, PinForm, ProfileSettingsForm, PreferenciasForm, NotificacionesForm
 from .models import Cliente, StreamConnection, CanalTransmision
-
-# 🔧 FFmpeg
-from core.services.ffmpeg_manager import start_program_stream, stop_program_stream
-
-# 🔔 Notificaciones WS
+# Servicios Websocket y Lógica
 from core.services.notificaciones_tiempo_real import (
     notificar_actualizacion_camara,
     notificar_camara_eliminada,
-    notificar_estado_canal,
+    notificar_estado_completo_camaras,
+    notificar_estado_canal
 )
-
-# 🎥 Estado transmisión
 from core.services.estado_transmision import (
-    detener_transmision_usuario,
     poner_camara_al_aire,
+    detener_transmision_usuario,
     cerrar_camara_usuario,
+    limpiar_conexiones_huerfanas
 )
+# Solo necesitamos stop para cuando Nginx avisa directamente
+from core.services.ffmpeg_manager import stop_program_stream 
 
-# 🌐 VPS host
-VPS_HOST = "kaircampanel.grupokairosarg.com"
 
-# =========================
-# AUTENTICACIÓN
-# =========================
+# ==============================================================================
+# SECCIÓN 1: AUTENTICACIÓN Y SEGURIDAD
+# ==============================================================================
 
 def login_view(request):
     if request.method == "POST":
-        user = authenticate(
-            request,
-            username=request.POST.get("username"),
-            password=request.POST.get("password"),
-        )
+        username = request.POST.get("username")
+        password = request.POST.get("password")
+        otp_token = request.POST.get("otp_token")
+
+        user = authenticate(request, username=username, password=password)
+
         if user:
-            login(request, user)
-            return redirect("home")
+            device = TOTPDevice.objects.filter(user=user, confirmed=True).first()
+            if device:
+                if otp_token:
+                    if device.verify_token(otp_token):
+                        login(request, user)
+                        return redirect("home")
+                    else:
+                        return render(request, "core/login.html", {
+                            "error": "Código 2FA incorrecto",
+                            "ask_2fa": True,
+                            "temp_username": username,
+                            "temp_password": password
+                        })
+                else:
+                    return render(request, "core/login.html", {
+                        "ask_2fa": True,
+                        "temp_username": username,
+                        "temp_password": password
+                    })
+            else:
+                login(request, user)
+                return redirect("home")
+
         return render(request, "core/login.html", {"error": "Credenciales inválidas"})
+
     return render(request, "core/login.html")
+
+
+@login_required
+def configurar_2fa(request):
+    user = request.user
+    device, created = TOTPDevice.objects.get_or_create(user=user, name="default")
+    
+    if request.method == 'POST':
+        token = request.POST.get('token')
+        if device.verify_token(token):
+            device.confirmed = True
+            device.save()
+            messages.success(request, "¡Código correcto! Seguridad activada.")
+            return redirect('ajustes_seguridad')
+        else:
+            messages.error(request, "Código incorrecto.")
+
+    otp_url = device.config_url
+    qr = qrcode.make(otp_url)
+    buffer = io.BytesIO()
+    qr.save(buffer, format="PNG")
+    qr_img_str = base64.b64encode(buffer.getvalue()).decode()
+    secret_key_clean = base64.b32encode(device.bin_key).decode('utf-8')
+
+    return render(request, 'core/configurar_2fa.html', {
+        'qr_image': qr_img_str,
+        'secret_key': secret_key_clean
+    })
+
+
+@login_required
+def desactivar_2fa(request):
+    if request.method == "POST":
+        TOTPDevice.objects.filter(user=request.user).delete()
+        messages.warning(request, "Autenticación de dos pasos desactivada.")
+    return redirect('ajustes_seguridad')
+
 
 def logout_view(request):
     logout(request)
     return redirect("login")
 
+
+# ==============================================================================
+# SECCIÓN 2: VISTAS PRINCIPALES
+# ==============================================================================
+
 @login_required
 def home(request):
     return render(request, "core/home.html")
 
-# =========================
-# RTMP / INGESTA
-# =========================
+@login_required
+def audio(request):
+    return render(request, "core/audio.html")
+
+@login_required
+def tutorial(request):
+    return render(request, "core/tutorial.html")
+
+
+# ==============================================================================
+# SECCIÓN 3: GESTIÓN DE CÁMARAS
+# ==============================================================================
 
 @csrf_exempt
-def validar_publicacion_stream_rtmp(request):
-    stream_name = request.POST.get("name") or request.GET.get("name")
-    if not stream_name:
-        return HttpResponseForbidden("Falta stream")
+def validar_publicacion(request):
+    """
+    Nginx -> Django. Crea la conexión PENDING.
+    """
+    stream_key = request.POST.get("name") or request.GET.get("name")
+    if not stream_key: return HttpResponseForbidden("Falta stream key")
 
     try:
-        username, cam_part = stream_name.split("-cam")
+        username, cam_part = stream_key.split("-cam")
         cam_index = int(cam_part)
-    except Exception:
+    except ValueError:
         return HttpResponseForbidden("Formato inválido")
 
     try:
         user = User.objects.get(username=username)
-        cliente = user.cliente
-        if not cliente.activo:
-            return HttpResponseForbidden("Cliente inactivo")
-    except (User.DoesNotExist, Cliente.DoesNotExist):
-        return HttpResponseForbidden("Cliente inválido")
+        if not hasattr(user, 'cliente') or not user.cliente.activo:
+            return HttpResponseForbidden("Usuario inactivo")
+    except User.DoesNotExist:
+        return HttpResponseForbidden("Usuario no encontrado")
 
+    # Creamos/Actualizamos conexión
     StreamConnection.objects.update_or_create(
         user=user,
         cam_index=cam_index,
         defaults={
-            "stream_key": stream_name,
+            "stream_key": stream_key,
             "status": StreamConnection.Status.PENDING,
             "authorized": False,
+            "ultimo_contacto": timezone.now()
         }
     )
 
+    # 🔔 Notificamos al frontend vía WebSocket
     notificar_actualizacion_camara(user, cam_index)
-    return HttpResponse("OK", content_type="text/plain")
+
+    return HttpResponse("OK")
+
 
 @csrf_exempt
 def stream_finalizado(request):
-    stream_name = request.POST.get("name") or request.GET.get("name")
-    if not stream_name:
-        return HttpResponse("NO STREAM", status=400)
+    """
+    Nginx -> Django. Cierre abrupto (OBS cerrado).
+    """
+    stream_key = request.POST.get("name") or request.GET.get("name")
+    
+    if stream_key:
+        try:
+            username = stream_key.split("-cam")[0]
+            cam_part = stream_key.split("-cam")[1]
+            cam_index = int(cam_part)
+            user = User.objects.get(username=username)
+            
+            # Detenemos proceso si era el activo
+            stop_program_stream(user)
+            
+            # Usamos el servicio para borrar y notificar
+            cerrar_camara_usuario(user, cam_index)
 
-    try:
-        username, cam_part = stream_name.split("-cam")
-        cam_index = int(cam_part)
-    except Exception:
-        return HttpResponse("FORMATO INVALIDO", status=400)
-
-    try:
-        user = User.objects.get(username=username)
-    except User.DoesNotExist:
-        return HttpResponse("OK")
-
-    StreamConnection.objects.filter(
-        user=user,
-        cam_index=cam_index,
-    ).delete()
-
-    notificar_camara_eliminada(user, cam_index)
+        except Exception as e:
+            print(f"Error stream_finalizado: {e}")
+        
     return HttpResponse("OK")
 
-# =========================
-# CÁMARAS
-# =========================
 
 @login_required
 @require_POST
 def autorizar_camara(request, cam_index):
+    """
+    Frontend -> Django. Valida PIN y pasa a READY.
+    """
     pin = request.POST.get("pin")
     if not pin or pin != request.user.cliente.pin:
         return JsonResponse({"ok": False, "error": "PIN incorrecto"}, status=403)
 
     try:
-        with transaction.atomic():
-            conn = StreamConnection.objects.select_for_update().get(
-                user=request.user,
-                cam_index=cam_index,
-                status=StreamConnection.Status.PENDING,
-            )
-            conn.status = StreamConnection.Status.READY
-            conn.authorized = True
-            conn.save(update_fields=["status", "authorized"])
+        conn = StreamConnection.objects.get(
+            user=request.user,
+            cam_index=cam_index,
+            status=StreamConnection.Status.PENDING
+        )
+        conn.status = StreamConnection.Status.READY
+        conn.authorized = True
+        conn.save()
+        
+        # 🔔 WebSocket Update
+        notificar_actualizacion_camara(request.user, cam_index)
+
+        return JsonResponse({"ok": True})
+        
     except StreamConnection.DoesNotExist:
-        return JsonResponse({"ok": False, "error": "No hay solicitud pendiente"}, status=404)
+        return JsonResponse({"ok": False, "error": "Solicitud no encontrada"}, status=404)
 
-    notificar_actualizacion_camara(request.user, cam_index)
-    return JsonResponse({"ok": True})
-
-@login_required
-@require_POST
-def rechazar_camara(request, cam_index):
-    StreamConnection.objects.filter(
-        user=request.user,
-        cam_index=cam_index,
-        status=StreamConnection.Status.PENDING,
-    ).delete()
-    notificar_camara_eliminada(request.user, cam_index)
-    return JsonResponse({"ok": True})
-
-@login_required
-@require_POST
-def cerrar_camara(request, cam_index):
-    cerrar_camara_usuario(request.user, cam_index)
-    return JsonResponse({"ok": True})
-
-# =========================
-# TRANSMISIÓN
-# =========================
-
-@login_required
-@require_POST
-def detener_transmision(request):
-    detener_transmision_usuario(request.user)
-    return JsonResponse({"ok": True})
 
 @login_required
 @require_POST
 def poner_al_aire(request, cam_index):
+    """
+    Frontend -> Django. Pone una cámara al aire.
+    """
     try:
         poner_camara_al_aire(request.user, cam_index)
+        return JsonResponse({"ok": True})
     except ValueError as e:
         return JsonResponse({"ok": False, "error": str(e)}, status=400)
+    except Exception as e:
+        print(e)
+        return JsonResponse({"ok": False, "error": "Error interno"}, status=500)
+
+
+@login_required
+@require_POST
+def detener_transmision(request):
+    """
+    Frontend -> Django. Detiene la transmisión activa.
+    """
+    detener_transmision_usuario(request.user)
     return JsonResponse({"ok": True})
 
-# =========================
-# ESTADO / POLLING
-# =========================
+
+@login_required
+@require_POST
+def rechazar_camara(request, cam_index):
+    """
+    Frontend -> Django. Rechaza una solicitud pendiente.
+    """
+    cerrar_camara_usuario(request.user, cam_index)
+    return JsonResponse({"ok": True})
+
+
+@login_required
+@require_POST
+def cerrar_camara(request, cam_index):
+    """
+    Frontend -> Django. Cierra una cámara (botón 'X').
+    """
+    cerrar_camara_usuario(request.user, cam_index)
+    return JsonResponse({"ok": True})
+
 
 @login_required
 def estado_camaras(request):
-    conexiones = StreamConnection.objects.filter(user=request.user)
-    data = {}
+    """
+    Snapshot inicial cuando se carga la página.
+    Devuelve el estado de TODAS las cámaras + el estado del canal.
+    """
+    # Limpiamos conexiones antiguas
+    limpiar_conexiones_huerfanas(request.user)
 
+    # Obtenemos todas las cámaras
+    conexiones = StreamConnection.objects.filter(user=request.user)
+    cameras_data = {}
+    
     for conn in conexiones:
         hls_url = None
         if conn.status in (StreamConnection.Status.READY, StreamConnection.Status.ON_AIR):
-            hls_url = f"http://{VPS_HOST}:8080/hls/live/{conn.stream_key}.m3u8"
+            hls_url = f"{settings.HLS_BASE_URL}/hls/live/{conn.stream_key}.m3u8"
 
-        data[str(conn.cam_index)] = {
+        cameras_data[str(conn.cam_index)] = {
             "status": conn.status,
             "authorized": conn.authorized,
             "hls_url": hls_url,
         }
 
-    return JsonResponse({"ok": True, "cameras": data})
+    # Obtenemos el estado del canal (preview principal)
+    try:
+        canal = CanalTransmision.objects.get(usuario=request.user)
+        canal_data = {
+            "en_vivo": canal.en_vivo,
+            "hls_url": canal.url_hls if canal.en_vivo else None
+        }
+    except CanalTransmision.DoesNotExist:
+        canal_data = {
+            "en_vivo": False,
+            "hls_url": None
+        }
 
-# =========================
-# USUARIOS (ADMIN)
-# =========================
+    return JsonResponse({
+        "ok": True, 
+        "cameras": cameras_data,
+        "canal": canal_data  # ← NUEVO: incluir estado del canal
+    })
+
+
+# ==============================================================================
+# SECCIÓN 4: ADMIN Y EXTRAS
+# ==============================================================================
 
 @user_passes_test(lambda u: u.is_superuser)
 def crear_usuario(request):
@@ -214,19 +335,22 @@ def crear_usuario(request):
         form = ClienteForm(request.POST)
         if form.is_valid():
             form.save()
-            return redirect("home")
+            return redirect("home") 
     else:
         form = ClienteForm()
     return render(request, "core/crear_usuario.html", {"form": form})
+
 
 @user_passes_test(lambda u: u.is_superuser)
 def ver_usuarios(request):
     clientes = Cliente.objects.select_related("user").all()
     return render(request, "core/ver_usuarios.html", {"clientes": clientes})
 
+
 @user_passes_test(lambda u: u.is_superuser)
 def editar_usuario(request, pk):
     cliente = get_object_or_404(Cliente, pk=pk)
+
     if request.method == "POST":
         form = ClienteForm(request.POST, instance=cliente)
         if form.is_valid():
@@ -244,52 +368,151 @@ def editar_usuario(request, pk):
         "edit_cliente": cliente,
     })
 
+
 @user_passes_test(lambda u: u.is_superuser)
 def eliminar_usuario(request, pk):
     cliente = get_object_or_404(Cliente, pk=pk)
     user = cliente.user
+
     if request.method == "POST":
-        user.delete()
+        user.delete() 
         return redirect("ver_usuarios")
     return redirect("ver_usuarios")
 
-# =========================
-# PERFIL CLIENTE
-# =========================
+
+# ==============================================================================
+# SECCIÓN 5: AJUSTES DE PERFIL
+# ==============================================================================
 
 @login_required
 def gestionar_pin(request):
     try:
         cliente = Cliente.objects.get(user=request.user)
     except Cliente.DoesNotExist:
-        messages.error(request, "No se encontró el perfil de cliente asociado.")
-        return redirect("home")
+        if request.user.is_superuser:
+            cliente = Cliente.objects.create(user=request.user)
+            messages.success(request, "Se ha creado un perfil de Cliente para el Administrador.")
+        else:
+            messages.error(request, "No se encontró el perfil de cliente asociado.")
+            return redirect('home')
 
-    if request.method == "POST":
+    if request.method == 'POST':
         form = PinForm(request.POST, instance=cliente)
         if form.is_valid():
             form.save()
-            messages.success(request, "¡Tu PIN ha sido actualizado con éxito!")
-            return redirect("gestionar_pin")
+            messages.success(request, '¡Tu PIN ha sido actualizado con éxito!')
+            return redirect('gestionar_pin')
     else:
         form = PinForm(instance=cliente)
 
-    context = {
-        "form": form,
-        "cliente": cliente,
-        "pin_establecido": bool(cliente.pin),
-    }
+    pin_establecido = bool(cliente.pin)
+    
+    return render(request, 'core/gestionar_pin.html', {
+        'form': form,
+        'cliente': cliente,
+        'pin_establecido': pin_establecido
+    })
 
-    return render(request, "core/gestionar_pin.html", context)
-
-# =========================
-# VISTAS SIMPLES
-# =========================
 
 @login_required
-def audio(request):
-    return render(request, "core/audio.html")
+def ajustes_perfil(request):
+    user = request.user
+    try:
+        cliente = user.cliente
+    except Cliente.DoesNotExist:
+        messages.error(request, "Tu usuario no tiene un perfil de cliente asociado.")
+        return redirect('home')
+
+    if request.method == 'POST':
+        form = ProfileSettingsForm(request.POST, request.FILES, instance=cliente, user_instance=user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, '¡Tu perfil ha sido actualizado!')
+            return redirect('ajustes_perfil')
+    else:
+        form = ProfileSettingsForm(instance=cliente, user_instance=user)
+
+    return render(request, 'core/ajustes/perfil.html', {
+        'form': form,
+        'active_tab': 'perfil'
+    })
+
 
 @login_required
-def tutorial(request):
-    return render(request, "core/tutorial.html")
+def ajustes_seguridad(request):
+    if request.method == 'POST' and 'btn_password' in request.POST:
+        password_form = PasswordChangeForm(request.user, request.POST)
+        if password_form.is_valid():
+            user = password_form.save()
+            update_session_auth_hash(request, user) 
+            messages.success(request, '¡Tu contraseña ha sido actualizada correctamente!')
+            return redirect('ajustes_seguridad')
+        else:
+            messages.error(request, 'Error al cambiar la contraseña.')
+    else:
+        password_form = PasswordChangeForm(request.user)
+
+    device = TOTPDevice.objects.filter(user=request.user, confirmed=True).first()
+    is_2fa_enabled = bool(device)
+
+    return render(request, 'core/ajustes/seguridad.html', {
+        'password_form': password_form,
+        'is_2fa_enabled': is_2fa_enabled,
+        'active_tab': 'seguridad'
+    })
+
+
+@login_required
+def ajustes_preferencias(request):
+    try:
+        cliente = request.user.cliente
+    except Cliente.DoesNotExist:
+        return redirect('home')
+
+    if request.method == 'POST':
+        form = PreferenciasForm(request.POST, instance=cliente)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "¡Preferencias guardadas!")
+            return redirect('ajustes_preferencias')
+    else:
+        form = PreferenciasForm(instance=cliente)
+
+    return render(request, 'core/ajustes/preferencias.html', {
+        'form': form,
+        'active_tab': 'preferencias'
+    })
+
+
+@login_required
+def ajustes_notificaciones(request):
+    try:
+        cliente = request.user.cliente
+    except Cliente.DoesNotExist:
+        return redirect('home')
+
+    if request.method == 'POST':
+        form = NotificacionesForm(request.POST, instance=cliente)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "¡Notificaciones guardadas!")
+            return redirect('ajustes_notificaciones')
+    else:
+        form = NotificacionesForm(instance=cliente)
+
+    return render(request, 'core/ajustes/notificaciones.html', {
+        'form': form,
+        'active_tab': 'notificaciones'
+    })
+
+
+@login_required
+def ajustes_conexiones(request):
+    rtmp_url = settings.RTMP_PUBLIC_URL
+    stream_key = f"{request.user.username}-cam1"
+
+    return render(request, 'core/ajustes/conexiones.html', {
+        'rtmp_url': rtmp_url,
+        'stream_key': stream_key,
+        'active_tab': 'conexiones'
+    })

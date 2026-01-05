@@ -1,0 +1,132 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    /* Estilos exclusivos para esta pantalla */
+    .auth-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        /* ANTES era center, AHORA es flex-start para respetar el margen de arriba */
+        justify-content: flex-start; 
+        min-height: 100vh;
+        /* Agregamos 120px arriba para que baje y no choque con el menú */
+        padding: 120px 20px 40px 20px; 
+        text-align: center;
+    }
+
+    .auth-card {
+        background: #0f1423; 
+        border: 1px solid #1f2937;
+        border-radius: 16px;
+        padding: 40px;
+        max-width: 500px;
+        width: 100%;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        /* Animación suave para que aparezca bonito */
+        animation: fadeIn 0.5s ease-out;
+    }
+
+    .qr-box {
+        background: white;
+        padding: 15px;
+        border-radius: 12px;
+        display: inline-block;
+        margin: 20px 0;
+        box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+    }
+
+    .step-list {
+        text-align: left;
+        margin-bottom: 25px;
+        color: #9ca3af;
+        font-size: 0.95rem;
+        background: rgba(255, 255, 255, 0.03);
+        padding: 15px;
+        border-radius: 8px;
+    }
+
+    .secret-code {
+        font-family: 'Courier New', monospace;
+        color: #fbbf24;
+        letter-spacing: 2px;
+        background: rgba(0, 0, 0, 0.3);
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 1.1rem;
+        display: block;
+        margin-top: 10px;
+        word-break: break-all;
+        border: 1px dashed #fbbf24;
+    }
+
+    /* Botón personalizado */
+    .btn-activate {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        border: none;
+        padding: 12px 30px;
+        font-size: 1rem;
+        font-weight: bold;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+        width: 100%;
+        margin-top: 15px;
+    }
+    .btn-activate:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+<div class="auth-container">
+    <div class="auth-card">
+        
+        <h2 style="color: white; margin-bottom: 10px; font-size: 1.8rem;">Autenticación de Dos Pasos</h2>
+        <p style="color: #6b7280; margin-bottom: 20px;">Escanea el código para asegurar tu cuenta</p>
+
+        <div class="step-list">
+            <p>1. Abre <strong>Google Authenticator</strong> en tu celular.</p>
+            <p>2. Presiona <strong>(+)</strong> y elige "Escanear código QR".</p>
+            <p>3. Apunta al siguiente código:</p>
+        </div>
+
+        <div class="qr-box">
+            <img src="data:image/png;base64,{{ qr_image }}" alt="QR Code" style="width: 100%; max-width: 200px; height: auto;">
+        </div>
+
+        <div style="margin-bottom: 30px;">
+            <p style="color: #6b7280; font-size: 0.85rem; margin-bottom: 5px;">¿No funciona la cámara? Usa este código:</p>
+            <span class="secret-code">{{ secret_key }}</span>
+        </div>
+
+        <form method="POST" style="margin-top: 20px;">
+            {% csrf_token %}
+            
+            <div style="margin-bottom: 15px; text-align: left;">
+                <label style="color: #cbd5e1; display: block; margin-bottom: 8px; font-weight: 600;">
+                    Ingresa el código de 6 dígitos:
+                </label>
+                <input type="text" name="token" placeholder="Ej: 123456" 
+                       style="width: 100%; background: #1a1f35; border: 1px solid rgba(255,255,255,0.2); color: white; padding: 12px; border-radius: 8px; font-size: 1.1rem; text-align: center; letter-spacing: 5px;"
+                       required autocomplete="off">
+            </div>
+            <button type="submit" class="btn-activate">
+                Verificar y Activar
+            </button>
+        </form>
+            <div class="text-center mt-3">
+                <a href="{% url 'ajustes_seguridad' %}" class="text-decoration-none text-muted">
+                    <small>Volver Atrás</small>
+                </a>
+            </div>
+    </div>
+</div>
+{% endblock %}

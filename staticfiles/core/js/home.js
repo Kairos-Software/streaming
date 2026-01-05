@@ -1,8 +1,9 @@
 // ===================================
-// CAMERA STATE MANAGER (SNAPSHOT + WS)
+// CAMERA STATE POLLER
 // ===================================
 class CameraStatePoller {
-    constructor() {
+    constructor(interval = 3000) {
+        this.interval = interval;
         this.lastState = {};
         this.previewHls = null;
         this.currentPreviewUrl = null;
@@ -12,11 +13,12 @@ class CameraStatePoller {
     }
 
     // ============================
-    // SNAPSHOT INICIAL
+    // POLLING LOOP
     // ============================
-    async start() {
-        await this.fetchState();
-        console.log('📸 Snapshot inicial de cámaras cargado');
+    start() {
+        this.fetchState();
+        this.timer = setInterval(() => this.fetchState(), this.interval);
+        console.log('🔄 Polling cámaras iniciado');
     }
 
     async fetchState() {
@@ -27,16 +29,18 @@ class CameraStatePoller {
                 this.syncCameras(data.cameras);
             }
         } catch (e) {
-            console.warn('⚠️ Error snapshot cámaras', e);
+            console.warn('⚠️ Error polling cámaras', e);
         }
     }
 
     // ============================
-    // PONER CÁMARA AL AIRE
+    // PUT CAMERA ON AIR (FAST UI)
     // ============================
     async setOnAir(camIndex) {
         const card = document.querySelector(`.camera-card[data-camera="${camIndex}"]`);
-        if (card) this.applyState(card, { status: 'on_air' });
+        if (card) {
+            this.applyState(card, { status: 'on_air' });
+        }
 
         try {
             await fetch(`/poner-al-aire/${camIndex}/`, {
@@ -49,13 +53,12 @@ class CameraStatePoller {
     }
 
     // ============================
-    // SINCRONIZAR CÁMARAS
+    // SYNC CAMERAS WITH BACKEND
     // ============================
     syncCameras(cameras) {
         let onAirCam = null;
         const backendIndexes = new Set(Object.keys(cameras));
 
-        // Eliminar wrappers que ya no existen
         document.querySelectorAll('.camera-wrapper').forEach(wrapper => {
             const index = wrapper.dataset.camera;
             if (!backendIndexes.has(index)) {
@@ -70,52 +73,39 @@ class CameraStatePoller {
             let wrapper = document.querySelector(`.camera-wrapper[data-camera="${index}"]`);
             let card = wrapper ? wrapper.querySelector('.camera-card') : null;
 
-            // Crear card si no existe y no está offline
-            if (!wrapper && cam.status !== 'offline') card = this.createCameraCard(index);
+            if (!wrapper && cam.status !== 'offline') {
+                card = this.createCameraCard(index);
+            }
+
             if (!card) return;
 
-            // Actualizar estado solo si cambió
             if (this.lastState[index] !== cam.status) {
                 this.applyState(card, cam);
                 this.lastState[index] = cam.status;
             }
 
-            // Video stream
             if ((cam.status === 'ready' || cam.status === 'on_air') && cam.hls_url) {
                 this.ensureVideoElement(card);
                 this.attachStream(card, cam.hls_url);
-            } else {
-                // Si no hay HLS, limpiar video
-                const video = card.querySelector('video');
-                if (video) {
-                    if (video._hls) video._hls.destroy();
-                    video.remove();
-                }
             }
 
-            if (cam.status === 'on_air') onAirCam = cam;
+            if (cam.status === 'on_air') {
+                onAirCam = cam;
+            }
         });
 
         this.syncPreview(onAirCam);
     }
 
     // ============================
-    // PREVIEW PRINCIPAL
+    // MAIN PREVIEW SYNC
     // ============================
     syncPreview(cam) {
         const video = document.getElementById('mainPreviewVideo');
         const empty = document.getElementById('previewEmpty');
         const globalStatus = document.getElementById('globalStatus');
 
-        if (!cam || !cam.hls_url) {
-            this.destroyPreview();
-            if (globalStatus) {
-                globalStatus.className = 'header-status-badge offline';
-                globalStatus.textContent = 'OFFLINE';
-            }
-            return;
-        }
-
+        if (!cam || !cam.hls_url) return;
         if (this.currentPreviewUrl === cam.hls_url) return;
 
         this.destroyPreview();
@@ -129,7 +119,9 @@ class CameraStatePoller {
             const hls = new Hls({ lowLatencyMode: true });
             hls.loadSource(cam.hls_url);
             hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                video.play().catch(() => {});
+            });
             this.previewHls = hls;
         } else {
             video.src = cam.hls_url;
@@ -142,26 +134,20 @@ class CameraStatePoller {
         }
     }
 
+    // ============================
+    // PREVIEW CLEANUP
+    // ============================
     destroyPreview() {
-        const video = document.getElementById('mainPreviewVideo');
-
         if (this.previewHls) {
             this.previewHls.destroy();
             this.previewHls = null;
         }
-
-        if (video) {
-            video.pause();
-            video.removeAttribute('src');
-            video.load();
-        }
-
         this.currentPreviewUrl = null;
         this.hasActivePreview = false;
     }
 
     // ============================
-    // CREAR CARD DE CÁMARA
+    // CAMERA CARD CREATION
     // ============================
     createCameraCard(index) {
         const grid = document.getElementById('camerasGrid');
@@ -195,33 +181,59 @@ class CameraStatePoller {
     }
 
     // ============================
-    // TOOLBAR
+    // CAMERA TOOLBAR ACTIONS
     // ============================
     bindToolbarEvents(wrapper, index) {
-        wrapper.querySelectorAll('.tool-btn').forEach(btn => {
+        const btns = wrapper.querySelectorAll('.tool-btn');
+
+        btns.forEach(btn => {
             btn.onclick = async () => {
                 const action = btn.dataset.action;
 
                 if (action === 'mute') {
                     const video = wrapper.querySelector('video');
                     if (!video) return;
+
+                    if (video.muted === undefined) {
+                        video.muted = true;
+                    }
+
                     video.muted = !video.muted;
                     btn.textContent = video.muted ? '🔇' : '🎤';
                 }
 
-                if (action === 'close') {
+                else if (action === 'close') {
                     if (!confirm(`¿Desconectar cámara ${index}?`)) return;
-                    await fetch(`/cerrar-camara/${index}/`, {
-                        method: 'POST',
-                        headers: { 'X-CSRFToken': getCSRFToken() }
-                    });
+
+                    try {
+                        const res = await fetch(`/cerrar-camara/${index}/`, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRFToken': getCSRFToken()
+                            }
+                        });
+
+                        if (!res.ok) return;
+
+                        const video = wrapper.querySelector('video');
+                        if (video) {
+                            video.pause();
+                            video.src = '';
+                            video.load();
+                        }
+
+                        wrapper.remove();
+
+                    } catch (err) {
+                        console.error('Error al cerrar cámara:', err);
+                    }
                 }
             };
         });
     }
 
     // ============================
-    // RENDER ESTADO
+    // CAMERA STATE RENDER
     // ============================
     applyState(card, cam) {
         const wrapper = card.closest('.camera-wrapper');
@@ -234,45 +246,46 @@ class CameraStatePoller {
         card.className = `camera-card ${cam.status}`;
         toolbar.style.display = (cam.status === 'ready' || cam.status === 'on_air') ? 'flex' : 'none';
 
-        switch(cam.status) {
-            case 'pending':
-                badge.textContent = 'SOLICITUD';
+        if (cam.status === 'pending') {
+            badge.textContent = 'SOLICITUD';
+            if (!preview.querySelector('video')) {
                 preview.innerHTML = `<div class="preview-empty">Intento de conexión detectado</div>`;
-                actionArea.innerHTML = '';
-                this.ensurePendingActions(card);
-                break;
+            }
+            bar.classList.remove('hidden-bar');
+            actionArea.innerHTML = '';
+            this.ensurePendingActions(card);
+        }
 
-            case 'ready':
-                badge.textContent = 'LISTA';
-                bar.innerHTML = '';
-                bar.classList.add('hidden-bar');
+        if (cam.status === 'ready') {
+            badge.textContent = 'LISTA';
+            bar.innerHTML = '';
+            bar.classList.add('hidden-bar');
 
-                if (!toolbar.querySelector('.btn-on-air-ext')) {
-                    toolbar.insertAdjacentHTML('afterbegin', `
-                        <button class="btn-action-external btn-on-air-ext">
-                            PONER AL AIRE
-                        </button>
-                    `);
-                    toolbar.querySelector('.btn-on-air-ext').onclick =
-                        () => this.setOnAir(card.dataset.camera);
-                }
-                break;
+            if (!toolbar.querySelector('.btn-on-air-ext')) {
+                toolbar.insertAdjacentHTML('afterbegin', `
+                    <button class="btn-action-external btn-on-air-ext">
+                        PONER AL AIRE
+                    </button>
+                `);
+                toolbar.querySelector('.btn-on-air-ext').onclick =
+                    () => this.setOnAir(card.dataset.camera);
+            }
 
-            case 'on_air':
-                badge.innerHTML = `<span class="badge-pulse"></span> EN AIRE`;
-                bar.innerHTML = '';
-                actionArea.innerHTML = '';
-                break;
+            this.ensureVideoElement(card);
+            this.attachStream(card, cam.hls_url);
+        }
 
-            case 'offline':
-                badge.textContent = 'OFFLINE';
-                preview.innerHTML = `<div class="preview-empty">Cámara desconectada</div>`;
-                actionArea.innerHTML = '';
-                bar.innerHTML = '';
-                break;
+        if (cam.status === 'on_air') {
+            badge.innerHTML = `<span class="badge-pulse"></span> EN AIRE`;
+            bar.innerHTML = '';
+            bar.classList.add('hidden-bar');
+            actionArea.innerHTML = '';
         }
     }
 
+    // ============================
+    // VIDEO / HLS HANDLING
+    // ============================
     ensureVideoElement(card) {
         const preview = card.querySelector('.camera-preview');
         if (!preview.querySelector('video')) {
@@ -281,21 +294,21 @@ class CameraStatePoller {
     }
 
     attachStream(card, url) {
-        if (!window.Hls || !Hls.isSupported()) return;
+        if (!window.Hls || !Hls.isSupported() || !url) return;
         const video = card.querySelector('video');
-        if (!video || video.dataset.src === url) return;
+        if (!video) return;
 
         if (video._hls) video._hls.destroy();
 
         const hls = new Hls({ lowLatencyMode: true });
         hls.loadSource(url);
         hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
-
         video._hls = hls;
-        video.dataset.src = url;
     }
 
+    // ============================
+    // PENDING CAMERA ACTIONS
+    // ============================
     ensurePendingActions(card) {
         const bar = card.querySelector('.camera-info-bar');
         if (bar.dataset.bound) return;
@@ -312,9 +325,9 @@ class CameraStatePoller {
             </form>
         `;
 
-        bar.querySelector('.accept-form').onsubmit = e => {
+        bar.querySelector('.accept-form').onsubmit = async e => {
             e.preventDefault();
-            fetch(`/autorizar-camara/${index}/`, {
+            await fetch(`/autorizar-camara/${index}/`, {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': getCSRFToken(),
@@ -324,9 +337,9 @@ class CameraStatePoller {
             });
         };
 
-        bar.querySelector('.reject-form').onsubmit = e => {
+        bar.querySelector('.reject-form').onsubmit = async e => {
             e.preventDefault();
-            fetch(`/rechazar-camara/${index}/`, {
+            await fetch(`/rechazar-camara/${index}/`, {
                 method: 'POST',
                 headers: { 'X-CSRFToken': getCSRFToken() }
             });
@@ -335,48 +348,47 @@ class CameraStatePoller {
 }
 
 // ===================================
-// INIT + WEBSOCKET
+// HOME INIT (IGUAL AL ORIGINAL)
 // ===================================
 document.addEventListener('DOMContentLoaded', () => {
+    let cameraPoller = null;
+
     if (document.querySelector('.control-body')) {
-        window.cameraPoller = new CameraStatePoller();
+        cameraPoller = new CameraStatePoller();
     }
 
-    const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-    const ws = new WebSocket(`${protocol}://${location.host}/ws/panel/`);
+    const video = document.getElementById('mainPreviewVideo');
+    const stopBtn = document.getElementById('btnStopStream');
+    const volume = document.getElementById('previewVolume');
 
-    ws.onopen = () => console.log('🟢 WebSocket conectado');
+    if (video) {
+        volume?.addEventListener('input', () => {
+            video.muted = false;
+            video.volume = volume.value;
+        });
 
-    ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        console.log('📩 WS:', data);
+        stopBtn?.addEventListener('click', async () => {
+            if (!cameraPoller || !cameraPoller.hasActivePreview) return;
 
-        if (!window.cameraPoller) return;
+            if (confirm('¿Detener transmisión actual?')) {
+                await fetch('/detener-transmision/', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCSRFToken() }
+                });
 
-        switch (data.tipo) {
-            case 'estado_camaras':
-                window.cameraPoller.syncCameras(data.cameras);
-                break;
+                cameraPoller.destroyPreview();
 
-            case 'camara_actualizada':
-                const camObj = {};
-                camObj[data.cam_index] = {
-                    status: data.estado,
-                    authorized: data.authorized,
-                    hls_url: data.hls_url
-                };
-                window.cameraPoller.syncCameras(camObj);
-                break;
+                const empty = document.getElementById('previewEmpty');
+                const globalStatus = document.getElementById('globalStatus');
 
-            case 'camara_eliminada':
-                const cardWrapper = document.querySelector(`.camera-wrapper[data-camera="${data.cam_index}"]`);
-                if (cardWrapper) cardWrapper.remove();
-                delete window.cameraPoller.lastState[data.cam_index];
-                break;
+                video.style.display = 'none';
+                if (empty) empty.style.display = 'flex';
 
-            case 'estado_canal':
-                window.cameraPoller.syncPreview(data.en_vivo ? data : null);
-                break;
-        }
-    };
+                if (globalStatus) {
+                    globalStatus.className = 'header-status-badge off-air';
+                    globalStatus.textContent = 'FUERA DEL AIRE';
+                }
+            }
+        });
+    }
 });

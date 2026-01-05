@@ -6,160 +6,98 @@
 {% endblock extra_css %}
 
 {% block content %}
-<div class="container gestion-pin-container">
+<div class="pin-page-container">
+    <div class="pin-content-wrapper">
 
-    <!-- HEADER -->
-    <div class="header-section">
-        <h1>Gestión de PIN de Cliente</h1>
-        <button
-            type="button"
-            class="btn btn-secondary btn-volver"
-            onclick="window.location.href='{% url 'home' %}'"
-        >
-            <i class="fas fa-arrow-left"></i> Volver
-        </button>
-    </div>
+        <div class="pin-header">
+            <h1 class="page-title">Gestión de Acceso</h1>
+            <p class="page-subtitle">Configura el PIN de seguridad para conectar cámaras externas.</p>
+        </div>
 
-    <!-- MENSAJES -->
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">
-                {{ message }}
-            </div>
-        {% endfor %}
-    {% endif %}
-
-    <!-- PIN ACTUAL -->
-    <div class="pin-display-section" id="pinDisplaySection">
-        <h2>PIN Actual</h2>
-
-        {% if cliente.pin %}
-            <p class="status-success">
-                PIN establecido
-            </p>
-
-            <div class="current-pin-info">
-                <!-- PIN OCULTO -->
-                <span
-                    id="pinMasked"
-                    class="pin-value-masked"
-                >
-                    ••••••••
-                </span>
-
-                <!-- PIN REAL DESDE DB -->
-                <span
-                    id="pinReal"
-                    class="pin-value-real hidden"
-                >
-                    {{ cliente.pin }}
-                </span>
-
-                <!-- MOSTRAR / OCULTAR -->
-                <button
-                    type="button"
-                    class="btn btn-secondary btn-sm"
-                    id="btnTogglePin"
-                >
-                    Mostrar PIN
-                </button>
-
-                <!-- EDITAR PIN (EXISTENTE) -->
-                <button
-                    type="button"
-                    class="btn btn-primary btn-sm"
-                    id="btnEditarPin"
-                >
-                    <i class="fas fa-edit"></i> Editar PIN
-                </button>
-            </div>
-
-            <small class="text-muted">
-                El PIN se utiliza para confirmar la conexión en el panel.
-            </small>
-
-        {% else %}
-            <p class="status-warning">
-                PIN pendiente
-            </p>
-
-            <button
-                type="button"
-                class="btn btn-primary"
-                id="btnEstablecerPin"
-            >
-                <i class="fas fa-plus-circle"></i> Establecer PIN
-            </button>
-        {% endif %}
-    </div>
-
-    <hr>
-
-    <!-- FORMULARIO -->
-    <div class="form-section hidden" id="pinFormSection">
-        <h2>
-            {% if cliente.pin %}
-                Modificar PIN
-            {% else %}
-                Crear PIN
-            {% endif %}
-        </h2>
-
-        <form method="post" id="pinForm">
-            {% csrf_token %}
-
-            {% for field in form %}
-                <div class="form-group {% if field.name == 'pin' %}pin-field-container{% endif %}">
-                    <label for="{{ field.id_for_label }}">
-                        {{ field.label }}
-                    </label>
-
-                    {{ field }}
-
-                    {% if field.name == 'pin' %}
-                        <button
-                            type="button"
-                            class="btn-toggle-pin"
-                            id="togglePinVisibility"
-                            title="Mostrar / Ocultar"
-                        >
-                            <i class="fas fa-eye"></i>
-                        </button>
-                    {% endif %}
-
-                    {% if field.help_text %}
-                        <small class="form-text text-muted">
-                            {{ field.help_text }}
-                        </small>
-                    {% endif %}
-
-                    {% for error in field.errors %}
-                        <div class="alert alert-danger">
-                            {{ error }}
-                        </div>
-                    {% endfor %}
+        <div class="settings-card pin-card">
+            
+            <div class="card-header-row">
+                <div class="section-subtitle">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" color="var(--brand-red)">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    PIN de Conexión
                 </div>
-            {% endfor %}
-
-            <div class="form-actions">
-                <button
-                    type="submit"
-                    class="btn btn-primary btn-confirmar"
-                >
-                    <i class="fas fa-check"></i> Guardar PIN
-                </button>
-
-                <button
-                    type="button"
-                    class="btn btn-secondary btn-cancelar"
-                    id="btnCancelarEdicion"
-                >
-                    Cancelar
-                </button>
+                
+                <a href="{% url 'home' %}" class="btn-back">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                    Volver al Panel
+                </a>
             </div>
-        </form>
-    </div>
 
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="status-message {% if message.tags %}{{ message.tags }}{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <div class="pin-status-section" id="pinDisplaySection">
+                {% if cliente.pin %}
+                    <div class="status-indicator active">
+                        <span class="dot"></span> PIN ACTIVO
+                    </div>
+                    
+                    <div class="current-pin-display">
+                        <span id="pinMasked" class="pin-text">••••••••</span>
+                        <span id="pinReal" class="pin-text hidden">{{ cliente.pin }}</span>
+                        
+                        <button type="button" class="btn-icon-action" id="btnTogglePin" title="Ver/Ocultar">
+                            <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        </button>
+                    </div>
+
+                    <div class="action-row">
+                        <button type="button" class="btn-secondary" id="btnEditarPin">
+                            Cambiar PIN
+                        </button>
+                    </div>
+
+                {% else %}
+                    <div class="status-indicator warning">
+                        <span class="dot"></span> NO CONFIGURADO
+                    </div>
+                    <p class="empty-state-text">
+                        Aún no has creado un PIN. Necesitas uno para autorizar cámaras desde la app móvil o fuentes externas.
+                    </p>
+                    <button type="button" class="btn-primary" id="btnEstablecerPin">
+                        Crear PIN Ahora
+                    </button>
+                {% endif %}
+            </div>
+
+            <div class="pin-form-section hidden" id="pinFormSection">
+                <div class="section-divider"></div>
+                
+                <h3 class="form-title">
+                    {% if cliente.pin %}Modificar PIN{% else %}Nuevo PIN{% endif %}
+                </h3>
+
+                <form method="post" id="pinForm">
+                    {% csrf_token %}
+                    
+                    <div class="form-group">
+                        <label>Ingresa un código numérico (4-8 dígitos)</label>
+                        <input type="password" name="pin" class="settings-input" placeholder="Ej: 1234" required pattern="[0-9]{4,8}">
+                        <small>Este código será requerido cada vez que conectes una nueva cámara.</small>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-ghost" id="btnCancelarEdicion">Cancelar</button>
+                        <button type="submit" class="btn-save">Guardar PIN</button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+    </div>
 </div>
 {% endblock content %}
 

@@ -1,22 +1,17 @@
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
+from django.conf import settings
 from core.models import StreamConnection, CanalTransmision
-
-# ============================
-# CONFIGURACIÓN VPS / HLS
-# ============================
-HLS_HOST = "kaircampanel.grupokairosarg.com"
-HLS_PORT = "8080"
-
 
 # ============================
 # FUNCIONES DE NOTIFICACIÓN WS
 # ============================
 
-def notificar_actualizacion_camara(user, cam_index=None):
+
+def notificar_estado_completo_camaras(user):
     """
-    Envía el estado de las cámaras de un usuario.
-    Si cam_index es None, envía todas las cámaras.
+    Envía el estado COMPLETO de TODAS las cámaras de un usuario.
+    Usar solo en snapshot inicial o cuando se necesite refrescar todo.
     """
     conexiones = StreamConnection.objects.filter(user=user)
     data = {}
@@ -24,17 +19,13 @@ def notificar_actualizacion_camara(user, cam_index=None):
     for c in conexiones:
         hls_url = None
         if c.status in [StreamConnection.Status.READY, StreamConnection.Status.ON_AIR]:
-            hls_url = f"http://{HLS_HOST}:{HLS_PORT}/hls/live/{c.stream_key}.m3u8"
+            hls_url = f"{settings.HLS_BASE_URL}/hls/live/{c.stream_key}.m3u8"
 
-        if cam_index is None or c.cam_index == cam_index:
-            data[str(c.cam_index)] = {
-                "status": c.status,
-                "authorized": c.authorized,
-                "hls_url": hls_url,
-            }
-
-    if not data:
-        return
+        data[str(c.cam_index)] = {
+            "status": c.status,
+            "authorized": c.authorized,
+            "hls_url": hls_url,
+        }
 
     layer = get_channel_layer()
     async_to_sync(layer.group_send)(
@@ -46,10 +37,10 @@ def notificar_actualizacion_camara(user, cam_index=None):
     )
 
 
-def notificar_camara_actualizada(user, cam_index):
+def notificar_actualizacion_camara(user, cam_index):
     """
-    Envía un evento individual cuando cambia el estado de una cámara
-    (pending, ready, on_air).
+    Envía un evento individual cuando cambia el estado de UNA cámara específica.
+    Este es más eficiente que enviar todo el estado.
     """
     try:
         c = StreamConnection.objects.get(user=user, cam_index=cam_index)
@@ -58,13 +49,13 @@ def notificar_camara_actualizada(user, cam_index):
 
     hls_url = None
     if c.status in [StreamConnection.Status.READY, StreamConnection.Status.ON_AIR]:
-        hls_url = f"http://{HLS_HOST}:{HLS_PORT}/hls/live/{c.stream_key}.m3u8"
+        hls_url = f"{settings.HLS_BASE_URL}/hls/live/{c.stream_key}.m3u8"
 
     layer = get_channel_layer()
     async_to_sync(layer.group_send)(
         f"usuario_{user.id}",
         {
-            "type": "camara_actualizada",
+            "type": "camara_actualizada",  # ← CRÍTICO: debe ser camara_actualizada
             "cam_index": cam_index,
             "estado": c.status,
             "authorized": c.authorized,
@@ -89,15 +80,23 @@ def notificar_camara_eliminada(user, cam_index):
 
 def notificar_estado_canal(user):
     """
-    Envía el estado del canal del usuario (en vivo o no) y la URL HLS del canal.
+    Envía el estado del canal del usuario (en vivo o no).
+    INCLUYE el HLS URL del programa completo.
     """
-    canal = CanalTransmision.objects.filter(usuario=user).first()
+    try:
+        canal = CanalTransmision.objects.get(usuario=user)
+        en_vivo = canal.en_vivo
+        hls_url = canal.url_hls if canal.en_vivo else None
+    except CanalTransmision.DoesNotExist:
+        en_vivo = False
+        hls_url = None
+
     layer = get_channel_layer()
     async_to_sync(layer.group_send)(
         f"usuario_{user.id}",
         {
             "type": "estado_canal",
-            "en_vivo": canal.en_vivo if canal else False,
-            "url_hls": f"http://{HLS_HOST}:{HLS_PORT}/hls/program/{user.username}.m3u8" if canal else None,
+            "en_vivo": en_vivo,
+            "hls_url": hls_url,  # ← CRÍTICO: debe incluir el URL del programa
         }
     )
