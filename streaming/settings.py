@@ -87,14 +87,13 @@ TEMPLATES = [
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'streaming_db',
-        'USER': 'streaming_user',
-        'PASSWORD': 'Grupokairos25+',
+        'NAME': 'streaming_vp',
+        'USER': 'postgres',
+        'PASSWORD': 'Psrs950599',
         'HOST': 'localhost',
         'PORT': '5432',
     }
 }
-
 
 # =========================
 # CHANNELS + REDIS
