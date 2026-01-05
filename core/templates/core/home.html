@@ -1,0 +1,159 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Control Center - KAIRCAM{% endblock %}
+{% block body_class %}control-body{% endblock %}
+
+{% block content %}
+<main class="control-main">
+  <div class="control-container-full">
+
+    <!-- Hero Section -->
+    <div class="hero-section">
+      <div class="hero-content">
+        <div class="hero-left">
+          <div class="status-indicator">
+            <span class="status-dot"></span>
+            <span class="status-text">Sistema Operativo</span>
+          </div>
+          <h1 class="hero-title">Centro de Producción</h1>
+          <p class="hero-subtitle">
+            Control multicámara en tiempo real • Gestión profesional de streaming
+          </p>
+        </div>
+        <div class="hero-stats">
+          <div class="stat-item">
+            <div class="stat-value" id="activeCamCount">0</div>
+            <div class="stat-label">Cámaras Activas</div>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-item">
+            <div class="stat-value" id="streamStatus">OFFLINE</div>
+            <div class="stat-label">Estado</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="main-grid">
+
+      <!-- Columna de Cámaras -->
+      <div class="left-column">
+
+        <section class="cameras-section">
+          <div class="section-header">
+            <div class="section-title-group">
+              <h2 class="section-title">Fuentes de Video</h2>
+              <div class="section-subtitle">Gestión de cámaras conectadas</div>
+            </div>
+
+            <div class="status-legends">
+              <div class="legend-item">
+                <span class="legend-dot on-air"></span>
+                <span>Al Aire</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot ready"></span>
+                <span>Lista</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot pending"></span>
+                <span>Pendiente</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="cameras-grid" id="camerasGrid"></div>
+
+          <div class="cameras-empty" id="camerasEmpty" style="display: none;">
+            <svg viewBox="0 0 24 24" class="empty-icon">
+              <path d="M23 7l-7 5 7 5V7z" stroke="currentColor" stroke-width="2" fill="none"/>
+              <rect x="1" y="5" width="15" height="14" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>
+            </svg>
+            <div class="empty-text">No hay cámaras conectadas</div>
+            <div class="empty-hint">Las cámaras aparecerán automáticamente al conectarse</div>
+          </div>
+
+        </section>
+
+      </div>
+
+      <!-- Columna de Preview -->
+      <aside class="right-column">
+        <div class="preview-panel">
+          
+          <div class="preview-header">
+            <div class="preview-title-group">
+              <h3 class="preview-title">Program Output</h3>
+              <div class="preview-subtitle">Salida principal de transmisión</div>
+            </div>
+            <div class="live-badge" id="liveBadge">
+              <span class="live-dot"></span>
+              <span>OFFLINE</span>
+            </div>
+          </div>
+        
+          <div class="preview-video-container" id="previewContainer">
+            <video
+              id="mainPreviewVideo"
+              autoplay
+              muted
+              playsinline
+            ></video>
+
+            <div class="preview-empty" id="previewEmpty">
+              <div class="preview-empty-content">
+                <svg viewBox="0 0 24 24" class="preview-empty-icon">
+                  <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>
+                  <path d="M8 21h8M12 17v4" stroke="currentColor" stroke-width="2" fill="none"/>
+                </svg>
+                <div class="preview-empty-text">No hay señal al aire</div>
+                <div class="preview-empty-hint">Seleccione una cámara para transmitir</div>
+              </div>
+            </div>
+
+            <!-- Overlay de información -->
+            <div class="preview-overlay" id="previewOverlay" style="display: none;">
+              <div class="preview-info">
+                <span class="preview-camera-label">CAM <span id="previewCamNumber">-</span></span>
+                <span class="preview-time" id="previewTime">00:00:00</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="preview-controls">
+            <button id="btnStopStream" class="btn-control btn-stop">
+              <svg viewBox="0 0 24 24" class="btn-icon">
+                <rect x="6" y="6" width="12" height="12" rx="1" fill="currentColor"/>
+              </svg>
+              Detener
+            </button>
+
+            <div class="volume-control">
+              <svg viewBox="0 0 24 24" class="volume-icon">
+                <path d="M11 5L6 9H2v6h4l5 4V5zM19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" stroke="currentColor" stroke-width="2" fill="none"/>
+              </svg>
+              <input
+                type="range"
+                id="previewVolume"
+                min="0"
+                max="1"
+                step="0.05"
+                value="0"
+              >
+              <span class="volume-value" id="volumeValue">0%</span>
+            </div>
+          </div>
+
+        </div>
+      </aside>
+
+    </div>
+  </div>
+</main>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'core/js/home.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,168 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'core/css/gestionar_pin.css' %}">
+{% endblock extra_css %}
+
+{% block content %}
+<div class="container gestion-pin-container">
+
+    <!-- HEADER -->
+    <div class="header-section">
+        <h1>Gestión de PIN de Cliente</h1>
+        <button
+            type="button"
+            class="btn btn-secondary btn-volver"
+            onclick="window.location.href='{% url 'home' %}'"
+        >
+            <i class="fas fa-arrow-left"></i> Volver
+        </button>
+    </div>
+
+    <!-- MENSAJES -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- PIN ACTUAL -->
+    <div class="pin-display-section" id="pinDisplaySection">
+        <h2>PIN Actual</h2>
+
+        {% if cliente.pin %}
+            <p class="status-success">
+                PIN establecido
+            </p>
+
+            <div class="current-pin-info">
+                <!-- PIN OCULTO -->
+                <span
+                    id="pinMasked"
+                    class="pin-value-masked"
+                >
+                    ••••••••
+                </span>
+
+                <!-- PIN REAL DESDE DB -->
+                <span
+                    id="pinReal"
+                    class="pin-value-real hidden"
+                >
+                    {{ cliente.pin }}
+                </span>
+
+                <!-- MOSTRAR / OCULTAR -->
+                <button
+                    type="button"
+                    class="btn btn-secondary btn-sm"
+                    id="btnTogglePin"
+                >
+                    Mostrar PIN
+                </button>
+
+                <!-- EDITAR PIN (EXISTENTE) -->
+                <button
+                    type="button"
+                    class="btn btn-primary btn-sm"
+                    id="btnEditarPin"
+                >
+                    <i class="fas fa-edit"></i> Editar PIN
+                </button>
+            </div>
+
+            <small class="text-muted">
+                El PIN se utiliza para confirmar la conexión en el panel.
+            </small>
+
+        {% else %}
+            <p class="status-warning">
+                PIN pendiente
+            </p>
+
+            <button
+                type="button"
+                class="btn btn-primary"
+                id="btnEstablecerPin"
+            >
+                <i class="fas fa-plus-circle"></i> Establecer PIN
+            </button>
+        {% endif %}
+    </div>
+
+    <hr>
+
+    <!-- FORMULARIO -->
+    <div class="form-section hidden" id="pinFormSection">
+        <h2>
+            {% if cliente.pin %}
+                Modificar PIN
+            {% else %}
+                Crear PIN
+            {% endif %}
+        </h2>
+
+        <form method="post" id="pinForm">
+            {% csrf_token %}
+
+            {% for field in form %}
+                <div class="form-group {% if field.name == 'pin' %}pin-field-container{% endif %}">
+                    <label for="{{ field.id_for_label }}">
+                        {{ field.label }}
+                    </label>
+
+                    {{ field }}
+
+                    {% if field.name == 'pin' %}
+                        <button
+                            type="button"
+                            class="btn-toggle-pin"
+                            id="togglePinVisibility"
+                            title="Mostrar / Ocultar"
+                        >
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    {% endif %}
+
+                    {% if field.help_text %}
+                        <small class="form-text text-muted">
+                            {{ field.help_text }}
+                        </small>
+                    {% endif %}
+
+                    {% for error in field.errors %}
+                        <div class="alert alert-danger">
+                            {{ error }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+
+            <div class="form-actions">
+                <button
+                    type="submit"
+                    class="btn btn-primary btn-confirmar"
+                >
+                    <i class="fas fa-check"></i> Guardar PIN
+                </button>
+
+                <button
+                    type="button"
+                    class="btn btn-secondary btn-cancelar"
+                    id="btnCancelarEdicion"
+                >
+                    Cancelar
+                </button>
+            </div>
+        </form>
+    </div>
+
+</div>
+{% endblock content %}
+
+{% block extra_js %}
+<script src="{% static 'core/js/gestionar_pin.js' %}"></script>
+{% endblock extra_js %}

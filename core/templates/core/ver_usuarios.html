@@ -1,0 +1,121 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Panel KairCam – Usuarios</title>
+
+  <link rel="icon" type="image/png" href="{% static 'core/images/kaircam-icon.png' %}?v=8" />
+  <link rel="stylesheet" href="{% static 'core/css/ver_usuarios.css' %}" />
+</head>
+<body class="page">
+
+  <main class="shell">
+    <section class="card">
+      <header class="card__header">
+        <h1 class="title">Usuarios registrados</h1>
+        <p class="subtitle">Solo superusuarios pueden gestionar usuarios</p>
+      </header>
+
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Email</th>
+              <th>Nombre</th>
+              <th>Apellido</th>
+              <th>DNI</th>
+              <th>Teléfono</th>
+              <th>Dirección</th>
+              <th>Activo</th>
+              <th>Creado en</th>
+              <th>Actualizado en</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for cliente in clientes %}
+
+            {# FORM externo por fila para edición inline #}
+            {% if edit_cliente and edit_cliente.pk == cliente.pk %}
+              <form id="edit-{{ cliente.pk }}" method="post" action="{% url 'editar_usuario' cliente.pk %}">
+                {% csrf_token %}
+              </form>
+            {% endif %}
+
+            <tr class="{% if edit_cliente and edit_cliente.pk == cliente.pk %}editing{% endif %}">
+              {% if edit_cliente and edit_cliente.pk == cliente.pk %}
+                {# MODO EDICIÓN: inputs asociados al form externo con atributo form="" #}
+                <td>
+                  <input type="text" name="username" form="edit-{{ cliente.pk }}" value="{{ cliente.user.username }}" />
+                </td>
+                <td>
+                  <input type="email" name="email" form="edit-{{ cliente.pk }}" value="{{ cliente.user.email }}" />
+                </td>
+                <td>
+                  <input type="text" name="nombre" form="edit-{{ cliente.pk }}" value="{{ cliente.nombre }}" />
+                </td>
+                <td>
+                  <input type="text" name="apellido" form="edit-{{ cliente.pk }}" value="{{ cliente.apellido }}" />
+                </td>
+                <td>
+                  <input type="text" name="dni" form="edit-{{ cliente.pk }}" value="{{ cliente.dni }}" />
+                </td>
+                <td>
+                  <input type="text" name="telefono" form="edit-{{ cliente.pk }}" value="{{ cliente.telefono }}" />
+                </td>
+                <td>
+                  <input type="text" name="direccion" form="edit-{{ cliente.pk }}" value="{{ cliente.direccion }}" />
+                </td>
+                <td>
+                  <input type="checkbox" name="activo" form="edit-{{ cliente.pk }}" {% if cliente.activo %}checked{% endif %} />
+                </td>
+                <td>{{ cliente.creado_en|date:"d/m/Y H:i" }}</td>
+                <td>{{ cliente.actualizado_en|date:"d/m/Y H:i" }}</td>
+                <td class="actions">
+                  <button type="submit" class="btn btn--confirm" form="edit-{{ cliente.pk }}">Confirmar</button>
+                  <button type="button" class="btn btn--cancel" onclick="window.location.href='{% url 'ver_usuarios' %}'">Cancelar</button>
+                </td>
+              {% else %}
+                {# MODO LECTURA #}
+                <td>{{ cliente.user.username }}</td>
+                <td>{{ cliente.user.email }}</td>
+                <td>{{ cliente.nombre }}</td>
+                <td>{{ cliente.apellido }}</td>
+                <td>{{ cliente.dni }}</td>
+                <td>{{ cliente.telefono }}</td>
+                <td>{{ cliente.direccion }}</td>
+                <td>{% if cliente.activo %}✔{% else %}✘{% endif %}</td>
+                <td>{{ cliente.creado_en|date:"d/m/Y H:i" }}</td>
+                <td>{{ cliente.actualizado_en|date:"d/m/Y H:i" }}</td>
+                <td class="actions">
+                  <button class="btn btn--edit" onclick="window.location.href='{% url 'editar_usuario' cliente.pk %}'">Editar</button>
+                  <form method="post" action="{% url 'eliminar_usuario' cliente.pk %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn--delete">Eliminar</button>
+                  </form>
+                </td>
+              {% endif %}
+            </tr>
+
+            {% empty %}
+            <tr>
+              <td colspan="11" class="empty">No hay usuarios registrados</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <footer class="card__footer">
+        <button class="btn btn--ghost" onclick="window.location.href='{% url 'home' %}'">Volver</button>
+      </footer>
+    </section>
+  </main>
+
+  <script src="{% static 'core/js/ver_usuarios.js' %}"></script>
+</body>
+</html>

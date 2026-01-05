@@ -1,0 +1,135 @@
+/* ======================================================
+   GESTIONAR PIN – POSICIÓN Y ESTILO COMBINADO
+====================================================== */
+
+/* 1. POSICIÓN: Centrado total en pantalla */
+body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    margin: 0;
+    background-color: #05070a; /* Fondo ultra oscuro de la app */
+}
+
+/* 2. ESTILO: Card inspirada en la segunda imagen */
+.gestion-pin-container {
+    width: 90%;
+    max-width: 550px;
+    background: linear-gradient(145deg, #1a2332 0%, #0a0e1a 100%);
+    border-radius: 24px;
+    padding: 40px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8);
+    color: #ffffff;
+    animation: cardIn 0.4s ease-out;
+}
+
+@keyframes cardIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ======================================================
+   HEADER (Estilo de la imagen 2)
+====================================================== */
+.header-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.header-section h1 {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+/* Botón Volver (Estilo Ghost/Oscuro) */
+.btn-volver {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #94a3b8 !important;
+    padding: 8px 16px;
+    border-radius: 8px;
+}
+
+/* ======================================================
+   PIN DISPLAY (Sección interna azulada)
+====================================================== */
+.pin-display-section {
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid rgba(59, 130, 246, 0.1);
+    border-radius: 16px;
+    padding: 25px;
+    margin-bottom: 20px;
+}
+
+.pin-display-section h2 {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #94a3b8;
+    margin-bottom: 10px;
+}
+
+/* Estilo de los puntos del PIN (Azules como en la imagen) */
+.pin-value-masked {
+    font-size: 2rem;
+    color: #3b82f6; /* El azul brillante de los puntos */
+    letter-spacing: 6px;
+    font-weight: bold;
+}
+
+.status-success {
+    color: #ffffff;
+    font-weight: 500;
+    margin-bottom: 15px;
+    font-size: 0.95rem;
+}
+
+/* ======================================================
+   BOTONES (Estilo Imagen 2)
+====================================================== */
+
+/* Botón Editar PIN (Azul Sólido) */
+#btnEditarPin, .btn-primary {
+    background: #3b82f6 !important;
+    color: white !important;
+    border: none !important;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+}
+
+/* Botón Mostrar PIN (Estilo oscuro) */
+#btnTogglePin, .btn-secondary:not(.btn-volver) {
+    background: #1a2332 !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #94a3b8 !important;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+/* Inputs del Formulario */
+.form-section input {
+    background: #05070a !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 10px !important;
+    padding: 14px !important;
+    color: white !important;
+}
+
+.text-muted {
+    display: block;
+    margin-top: 15px;
+    color: #64748b;
+    font-size: 0.8rem;
+}
+
+.hidden { display: none !important; }
+hr { border: 0; border-top: 1px solid rgba(255, 255, 255, 0.05); margin: 30px 0; }

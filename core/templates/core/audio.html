@@ -1,0 +1,224 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'core/css/audio.css' %}">
+{% endblock %}
+
+{% block content %}
+<!-- HERO SECTION -->
+<section class="hero-section">
+    <div class="hero-content">
+        <div class="hero-left">
+            <div class="status-indicator">
+                <span class="status-dot"></span>
+                <span class="status-text">48kHz • 24-bit • 128 samples</span>
+            </div>
+            <h1 class="hero-title">Audio Mixer</h1>
+            <p class="hero-subtitle">Consola digital profesional</p>
+        </div>
+        <div class="hero-stats">
+            <div class="stat-item">
+                <div class="stat-value" id="statChannels">0</div>
+                <div class="stat-label">Channels</div>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+                <div class="stat-value" id="statCpu">12%</div>
+                <div class="stat-label">CPU</div>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+                <div class="stat-value" id="statLatency">2.7ms</div>
+                <div class="stat-label">Latency</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- DAW WORKSPACE -->
+<div class="daw-workspace">
+    
+    <!-- TRANSPORT BAR -->
+    <div class="transport-bar">
+        <div class="transport-left">
+            <button class="transport-btn record" id="btnRecord">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="12" cy="12" r="8"/>
+                </svg>
+            </button>
+            <button class="transport-btn play" id="btnPlay">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+            </button>
+            <button class="transport-btn stop" id="btnStop">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="6" y="6" width="12" height="12"/>
+                </svg>
+            </button>
+            <div class="transport-divider"></div>
+            <button class="transport-btn" id="btnLoop">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/>
+                </svg>
+            </button>
+            <button class="transport-btn" id="btnMetronome">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 22h20L12 2z"/>
+                    <line x1="12" y1="6" x2="12" y2="14"/>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="transport-center">
+            <div class="time-display">
+                <span class="time-bars">001</span>
+                <span class="time-separator">|</span>
+                <span class="time-beats">01</span>
+                <span class="time-separator">|</span>
+                <span class="time-ticks">000</span>
+            </div>
+            <div class="tempo-display">
+                <input type="number" class="tempo-input" value="120" min="40" max="300">
+                <span class="tempo-label">BPM</span>
+            </div>
+        </div>
+        
+        <div class="transport-right">
+            <button class="btn-add-channel" id="btnAddChannel">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Add Channel
+            </button>
+        </div>
+    </div>
+
+    <!-- MIXER CONTAINER -->
+    <div class="mixer-container">
+        
+        <!-- CHANNELS RACK -->
+        <div class="channels-rack" id="channelsRack">
+            <!-- Channels will be added here -->
+        </div>
+
+        <!-- MASTER CHANNEL -->
+        <div class="master-section">
+            <div class="channel-strip master">
+                
+                <!-- Header -->
+                <div class="strip-header">
+                    <span class="strip-label">MASTER</span>
+                    <div class="strip-indicator live">
+                        <span class="indicator-dot"></span>
+                    </div>
+                </div>
+
+                <!-- Inserts -->
+                <div class="inserts-section">
+                    <button class="insert-slot empty" title="Add Insert">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- EQ Section -->
+                <div class="eq-section">
+                    <div class="eq-header">
+                        <span class="eq-label">EQ</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="eq-controls">
+                        <div class="eq-knob">
+                            <div class="knob" data-value="0">
+                                <div class="knob-indicator"></div>
+                            </div>
+                            <span class="knob-label">LOW</span>
+                            <span class="knob-value">0.0</span>
+                        </div>
+                        <div class="eq-knob">
+                            <div class="knob" data-value="0">
+                                <div class="knob-indicator"></div>
+                            </div>
+                            <span class="knob-label">MID</span>
+                            <span class="knob-value">0.0</span>
+                        </div>
+                        <div class="eq-knob">
+                            <div class="knob" data-value="0">
+                                <div class="knob-indicator"></div>
+                            </div>
+                            <span class="knob-label">HIGH</span>
+                            <span class="knob-value">0.0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Meters -->
+                <div class="meter-section">
+                    <div class="stereo-meter">
+                        <div class="meter-scale">
+                            <span>0</span>
+                            <span>-12</span>
+                            <span>-24</span>
+                            <span>-48</span>
+                        </div>
+                        <div class="meter-bars">
+                            <div class="meter-bar">
+                                <div class="meter-fill" id="masterMeterL"></div>
+                                <div class="meter-peak" id="masterPeakL"></div>
+                            </div>
+                            <div class="meter-bar">
+                                <div class="meter-fill" id="masterMeterR"></div>
+                                <div class="meter-peak" id="masterPeakR"></div>
+                            </div>
+                        </div>
+                        <div class="meter-labels">
+                            <span>L</span>
+                            <span>R</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pan -->
+                <div class="pan-section">
+                    <input type="range" class="pan-slider" min="-100" max="100" value="0" id="masterPan">
+                    <div class="pan-display">
+                        <span class="pan-label">PAN</span>
+                        <span class="pan-value" id="masterPanValue">C</span>
+                    </div>
+                </div>
+
+                <!-- Fader -->
+                <div class="fader-section">
+                    <input type="range" class="fader-slider master" min="0" max="127" value="100" orient="vertical" id="masterFader">
+                    <div class="fader-track"></div>
+                    <div class="fader-cap" id="masterCap"></div>
+                </div>
+
+                <!-- Volume Display -->
+                <div class="volume-display" id="masterVolume">0.0 dB</div>
+
+                <!-- Footer Buttons -->
+                <div class="strip-footer">
+                    <button class="footer-btn mute" id="masterMute">M</button>
+                    <button class="footer-btn solo" id="masterSolo">S</button>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'core/js/audio.js' %}"></script>
+{% endblock %}

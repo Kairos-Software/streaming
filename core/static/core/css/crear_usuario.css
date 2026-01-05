@@ -1,0 +1,282 @@
+/* ======================================================
+   BASE / RESET
+====================================================== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background:
+    radial-gradient(1000px 500px at 15% 20%, #1e293b 0%, #020617 55%);
+  color: #e5e7eb;
+}
+
+/* ======================================================
+   PAGE LAYOUT
+====================================================== */
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.shell {
+  width: 100%;
+  max-width: 880px;
+  padding: 28px;
+}
+
+/* ======================================================
+   CARD
+====================================================== */
+.card {
+  position: relative;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(30, 41, 59, 0.95),
+      rgba(2, 6, 23, 0.95)
+    );
+  border-radius: 20px;
+  padding: 30px 34px 28px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.07),
+    0 30px 80px rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(14px);
+  animation: cardIn 0.4s ease-out;
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ======================================================
+   HEADER
+====================================================== */
+.card__header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 26px;
+}
+
+.brand__logo {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+}
+
+.brand__text .title {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.brand__text .subtitle {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  color: #b6c2ff; /* más visible */
+}
+
+/* ======================================================
+   FORM
+====================================================== */
+.form {
+  display: flex;
+  flex-direction: column;
+}
+
+/* GRID */
+.fields {
+  margin-top: 8px;
+}
+
+.fields--grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 22px;
+}
+
+/* FIELD */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field--full {
+  grid-column: 1 / -1;
+}
+
+/* LABEL */
+.field label {
+  font-size: 0.78rem;
+  color: #dbeafe; /* más claro */
+  letter-spacing: 0.25px;
+}
+
+/* INPUTS */
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(15, 23, 42, 0.9);
+  color: #f8fafc;
+  font-size: 0.88rem;
+  outline: none;
+  transition:
+    border 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.field textarea {
+  resize: none;
+  min-height: 44px;
+}
+
+/* PLACEHOLDER */
+.field input::placeholder,
+.field textarea::placeholder {
+  color: #94a3b8;
+}
+
+/* FOCUS */
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.6);
+  background: rgba(15, 23, 42, 1);
+}
+
+/* HOVER */
+.field input:hover,
+.field textarea:hover {
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+/* ======================================================
+   ERRORS
+====================================================== */
+.errorlist {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+  color: #fca5a5;
+}
+
+.errorlist li {
+  margin: 2px 0;
+}
+
+/* ======================================================
+   ACTIONS
+====================================================== */
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-top: 26px;
+}
+
+.btn {
+  min-width: 160px;
+  padding: 11px 16px;
+  border-radius: 14px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+/* PRIMARY */
+.btn--primary {
+  background: linear-gradient(180deg, #ef4444, #dc2626);
+  color: #fff;
+  box-shadow: 0 12px 34px rgba(239, 68, 68, 0.35);
+}
+
+.btn--primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 46px rgba(239, 68, 68, 0.45);
+}
+
+.btn--primary:active {
+  transform: translateY(0);
+}
+
+/* GHOST */
+.btn--ghost {
+  background: rgba(148, 163, 184, 0.08);
+  color: #e5e7eb;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.btn--ghost:hover {
+  background: rgba(148, 163, 184, 0.14);
+}
+
+/* ======================================================
+   FOOTER
+====================================================== */
+.card__footer {
+  margin-top: 22px;
+  text-align: center;
+}
+
+.meta {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+/* ======================================================
+   EXTRAS PRO
+====================================================== */
+.field:focus-within label {
+  color: #fecaca;
+}
+
+/* ======================================================
+   RESPONSIVE
+====================================================== */
+@media (max-width: 768px) {
+  .shell {
+    max-width: 100%;
+  }
+
+  .fields--grid {
+    grid-template-columns: 1fr;
+  }
+
+  .actions {
+    flex-direction: column-reverse;
+    gap: 12px;
+  }
+
+  .btn {
+    width: 100%;
+  }
+}
