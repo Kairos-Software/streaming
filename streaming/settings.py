@@ -2,51 +2,57 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# =========================
-# ENV
-# =========================
+# ======================================================
+# BASE
+# ======================================================
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env.local")
 
-# =========================
+# ======================================================
+# ENTORNO (.env selector)
+# ======================================================
+ENV = os.getenv("ENV", "local")
+
+if ENV == "production":
+    load_dotenv(BASE_DIR / ".env.production")
+else:
+    load_dotenv(BASE_DIR / ".env.local")
+
+# ======================================================
 # SEGURIDAD
-# =========================
+# ======================================================
 SECRET_KEY = os.getenv("SECRET_KEY", "insecure-dev-key")
 
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
-ALLOWED_HOSTS = os.getenv(
+ALLOWED_HOSTS = [h.strip() for h in os.getenv(
     "ALLOWED_HOSTS",
     "127.0.0.1,localhost"
-).split(",")
+).split(",") if h]
 
-# 🔧 Fix: filtramos valores vacíos
+# CSRF
 raw_origins = os.getenv("CSRF_TRUSTED_ORIGINS", "")
-CSRF_TRUSTED_ORIGINS = [o for o in raw_origins.split(",") if o]
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in raw_origins.split(",") if o]
 
-# =========================
+# ======================================================
 # APLICACIONES
-# =========================
+# ======================================================
 INSTALLED_APPS = [
     "daphne",
-
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
     "channels",
     "django_otp",
     "django_otp.plugins.otp_totp",
-
     "core",
 ]
 
-# =========================
+# ======================================================
 # MIDDLEWARE
-# =========================
+# ======================================================
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -58,17 +64,16 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-# =========================
+# ======================================================
 # URLS / ASGI / WSGI
-# =========================
+# ======================================================
 ROOT_URLCONF = "streaming.urls"
-
 WSGI_APPLICATION = "streaming.wsgi.application"
 ASGI_APPLICATION = "streaming.asgi.application"
 
-# =========================
+# ======================================================
 # TEMPLATES
-# =========================
+# ======================================================
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -85,9 +90,9 @@ TEMPLATES = [
     },
 ]
 
-# =========================
-# DATABASE
-# =========================
+# ======================================================
+# DATABASE (PostgreSQL)
+# ======================================================
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -99,9 +104,9 @@ DATABASES = {
     }
 }
 
-# =========================
+# ======================================================
 # CHANNELS + REDIS
-# =========================
+# ======================================================
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
@@ -114,43 +119,32 @@ CHANNEL_LAYERS = {
     },
 }
 
-# =========================
-# PASSWORD VALIDATORS
-# =========================
-AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
-    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
-    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
-]
-
-# =========================
+# ======================================================
 # INTERNACIONALIZACIÓN
-# =========================
+# ======================================================
 LANGUAGE_CODE = "es-ar"
 TIME_ZONE = "America/Argentina/Buenos_Aires"
 USE_I18N = True
 USE_TZ = True
 
-# =========================
+# ======================================================
 # STATIC & MEDIA
-# =========================
+# ======================================================
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-# =========================
+# ======================================================
 # AUTH
-# =========================
+# ======================================================
 LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/login/"
 
-# =========================
-# EMAIL (GMAIL)
-# =========================
+# ======================================================
+# EMAIL
+# ======================================================
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
@@ -159,12 +153,11 @@ EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 
-# =========================
-# STREAMING / ENTORNO
-# =========================
+# ======================================================
+# STREAMING / HLS
+# ======================================================
 STREAMING_MODE = os.getenv("STREAMING_MODE", "local")
 
-# HLS: URLs y ruta en disco provistas por .env (ya incluyen /hls según entorno)
 HLS_SERVER_URL_HTTP = os.getenv("HLS_SERVER_URL_HTTP")
 HLS_SERVER_URL_HTTPS = os.getenv("HLS_SERVER_URL_HTTPS")
 HLS_PATH = os.getenv("HLS_PATH")
@@ -176,7 +169,46 @@ def get_hls_base_url():
 
 HLS_BASE_URL = get_hls_base_url()
 
-# FFmpeg y RTMP interno (para reenvío program)
+# ======================================================
+# RTMP / FFMPEG
+# ======================================================
 FFMPEG_BIN_PATH = os.getenv("FFMPEG_BIN_PATH", "ffmpeg")
+RTMP_SERVER_HOST_PUBLIC = os.getenv("RTMP_SERVER_HOST_PUBLIC", "127.0.0.1")
+RTMP_SERVER_PORT = int(os.getenv("RTMP_SERVER_PORT", "9000"))
 RTMP_SERVER_HOST_INTERNAL = os.getenv("RTMP_SERVER_HOST_INTERNAL", "127.0.0.1")
 RTMP_SERVER_PORT_INTERNAL = int(os.getenv("RTMP_SERVER_PORT_INTERNAL", "9000"))
+
+# ======================================================
+# LOGGING
+# ======================================================
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "file": {
+            "level": "DEBUG",
+            "class": "logging.FileHandler",
+            "filename": BASE_DIR / "django.log",
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["file"],
+            "level": "DEBUG",
+            "propagate": True,
+        },
+    },
+}
+
+# ======================================================
+# DEBUG VISUAL DE ENTORNO (BORRAR CUANDO ANDE)
+# ======================================================
+print("=== DJANGO ENV ===")
+print("ENV:", ENV)
+print("DEBUG:", DEBUG)
+print("DB_NAME:", os.getenv("DB_NAME"))
+print("REDIS:", os.getenv("REDIS_HOST"), os.getenv("REDIS_PORT"))
+print("HLS_BASE_URL:", HLS_BASE_URL)
+print("RTMP_PUBLIC:", RTMP_SERVER_HOST_PUBLIC, RTMP_SERVER_PORT)
+print("RTMP_INTERNAL:", RTMP_SERVER_HOST_INTERNAL, RTMP_SERVER_PORT_INTERNAL)
+print("==================")

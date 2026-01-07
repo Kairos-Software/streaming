@@ -2,7 +2,7 @@ import qrcode
 import io
 import base64
 from datetime import timedelta
-
+from django.conf import settings
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -137,27 +137,25 @@ def tutorial(request):
 
 @csrf_exempt
 def validar_publicacion(request):
-    """
-    Nginx -> Django. Crea la conexión PENDING.
-    """
     stream_key = request.POST.get("name") or request.GET.get("name")
-    if not stream_key: return HttpResponseForbidden("Falta stream key")
+    if not stream_key:
+        return HttpResponseForbidden("Falta stream key")
 
     try:
         username, cam_part = stream_key.split("-cam")
         cam_index = int(cam_part)
     except ValueError:
-        return HttpResponseForbidden("Formato inválido")
+        return HttpResponseForbidden("Formato inválido de stream_key")
 
     try:
         user = User.objects.get(username=username)
-        if not hasattr(user, 'cliente') or not user.cliente.activo:
+        if not hasattr(user, "cliente") or not user.cliente.activo:
             return HttpResponseForbidden("Usuario inactivo")
     except User.DoesNotExist:
         return HttpResponseForbidden("Usuario no encontrado")
 
-    # Creamos/Actualizamos conexión
-    StreamConnection.objects.update_or_create(
+    # Crear o actualizar conexión PENDING
+    conn, created = StreamConnection.objects.update_or_create(
         user=user,
         cam_index=cam_index,
         defaults={
@@ -168,46 +166,41 @@ def validar_publicacion(request):
         }
     )
 
-    # 🔔 Notificamos al frontend vía WebSocket
+    # 🔔 Notificación WebSocket (el servicio debe construir hls_url según estado)
     notificar_camara_actualizada(user, cam_index)
 
+    print(f"[DEBUG] validar_publicacion: {stream_key} para usuario {username} (cam {cam_index})")
     return HttpResponse("OK")
 
 
 @csrf_exempt
 def stream_finalizado(request):
-    """
-    Nginx -> Django. Cierre abrupto (OBS cerrado).
-    """
     stream_key = request.POST.get("name") or request.GET.get("name")
-    
-    if stream_key:
-        try:
-            username = stream_key.split("-cam")[0]
-            cam_part = stream_key.split("-cam")[1]
-            cam_index = int(cam_part)
-            user = User.objects.get(username=username)
-            
-            # Detenemos proceso si era el activo
-            stop_program_stream(user)
-            
-            # Usamos el servicio para borrar y notificar
-            cerrar_camara_usuario(user, cam_index)
+    if not stream_key:
+        return HttpResponse("OK")  # no hacemos nada si no hay key
 
-        except Exception as e:
-            print(f"Error stream_finalizado: {e}")
-        
+    try:
+        username, cam_part = stream_key.split("-cam")
+        cam_index = int(cam_part)
+        user = User.objects.get(username=username)
+
+        # Detener cualquier retransmisión ON_AIR
+        stop_program_stream(user)
+        cerrar_camara_usuario(user, cam_index)
+
+        print(f"[DEBUG] stream_finalizado: {stream_key} usuario {username} cam {cam_index}")
+
+    except Exception as e:
+        print(f"[ERROR] stream_finalizado: {e}")
+
     return HttpResponse("OK")
 
 
 @login_required
 @require_POST
 def autorizar_camara(request, cam_index):
-    """
-    Frontend -> Django. Valida PIN y pasa a READY.
-    """
     pin = request.POST.get("pin")
-    if not pin or pin != request.user.cliente.pin:
+    if not pin or not hasattr(request.user, "cliente") or pin != request.user.cliente.pin:
         return JsonResponse({"ok": False, "error": "PIN incorrecto"}, status=403)
 
     try:
@@ -219,12 +212,13 @@ def autorizar_camara(request, cam_index):
         conn.status = StreamConnection.Status.READY
         conn.authorized = True
         conn.save()
-        
-        # 🔔 WebSocket Update
+
+        # 🔔 Notificación WebSocket
         notificar_camara_actualizada(request.user, cam_index)
 
+        print(f"[DEBUG] autorizar_camara: usuario {request.user.username} cam {cam_index} READY")
         return JsonResponse({"ok": True})
-        
+
     except StreamConnection.DoesNotExist:
         return JsonResponse({"ok": False, "error": "Solicitud no encontrada"}, status=404)
 
@@ -232,26 +226,22 @@ def autorizar_camara(request, cam_index):
 @login_required
 @require_POST
 def poner_al_aire(request, cam_index):
-    """
-    Frontend -> Django. Usa el servicio de Marcos.
-    """
     try:
         poner_camara_al_aire(request.user, cam_index)
+        print(f"[DEBUG] poner_al_aire: usuario {request.user.username} cam {cam_index} ON_AIR")
         return JsonResponse({"ok": True})
     except ValueError as e:
         return JsonResponse({"ok": False, "error": str(e)}, status=400)
     except Exception as e:
-        print(e)
+        print(f"[ERROR] poner_al_aire: {e}")
         return JsonResponse({"ok": False, "error": "Error interno"}, status=500)
 
 
 @login_required
 @require_POST
 def detener_transmision(request):
-    """
-    Frontend -> Django. Usa el servicio de Marcos.
-    """
     detener_transmision_usuario(request.user)
+    print(f"[DEBUG] detener_transmision: usuario {request.user.username}")
     return JsonResponse({"ok": True})
 
 
@@ -277,18 +267,23 @@ def cerrar_camara(request, cam_index):
 
 @login_required
 def estado_camaras(request):
-    """
-    Snapshot inicial (Polling inicial).
-    """
+    from core.services.estado_transmision import limpiar_conexiones_huerfanas
+    from core.models import CanalTransmision
+
     limpiar_conexiones_huerfanas(request.user)
 
     conexiones = StreamConnection.objects.filter(user=request.user)
     data = {}
-    
+
     for conn in conexiones:
         hls_url = None
-        if conn.status in (StreamConnection.Status.READY, StreamConnection.Status.ON_AIR):
-            hls_url = f"http://localhost:8080/hls/live/{conn.stream_key}.m3u8"
+
+        if conn.status == StreamConnection.Status.READY:
+            # Cada cámara lista se expone con su stream key
+            hls_url = f"{settings.HLS_BASE_URL}/live/{conn.stream_key}.m3u8"
+        elif conn.status == StreamConnection.Status.ON_AIR:
+            # La cámara al aire se refleja en la salida única del usuario
+            hls_url = f"{settings.HLS_BASE_URL}/program/{request.user.username}.m3u8"
 
         data[str(conn.cam_index)] = {
             "status": conn.status,
@@ -296,7 +291,16 @@ def estado_camaras(request):
             "hls_url": hls_url,
         }
 
-    return JsonResponse({"ok": True, "cameras": data})
+    canal_obj = CanalTransmision.objects.filter(usuario=request.user).first()
+    canal = None
+    if canal_obj:
+        canal = {
+            "en_vivo": bool(canal_obj.en_vivo),
+            "hls_url": canal_obj.url_hls,
+            "inicio": canal_obj.inicio_transmision.isoformat() if canal_obj.inicio_transmision else None,
+        }
+
+    return JsonResponse({"ok": True, "cameras": data, "canal": canal})
 
 
 # ==============================================================================
@@ -483,7 +487,7 @@ def ajustes_notificaciones(request):
 
 @login_required
 def ajustes_conexiones(request):
-    rtmp_url = "rtmp://127.0.0.1:1935/live"
+    rtmp_url = f"rtmp://{settings.RTMP_SERVER_HOST_PUBLIC}:{settings.RTMP_SERVER_PORT}/live"
     stream_key = f"{request.user.username}-cam1"
 
     return render(request, 'core/ajustes/conexiones.html', {
