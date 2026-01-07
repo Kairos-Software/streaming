@@ -12,6 +12,7 @@ cryptography==46.0.3
 daphne==4.2.1
 Django==6.0
 django-otp==1.6.3
+dotenv==0.9.9
 hyperlink==21.0.0
 idna==3.11
 Incremental==24.11.0
@@ -23,6 +24,7 @@ pyasn1==0.6.1
 pyasn1_modules==0.4.2
 pycparser==2.23
 pyOpenSSL==25.3.0
+python-dotenv==1.2.1
 qrcode==8.2
 redis==7.1.0
 service-identity==24.2.0

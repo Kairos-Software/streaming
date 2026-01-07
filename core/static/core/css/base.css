@@ -348,7 +348,7 @@ svg { display: block; }
 .camera-card.pending { border-color: rgba(245, 158, 11, 0.3); }
 .camera-card.ready { border-color: rgba(16, 185, 129, 0.2); }
 .camera-card.ready:hover { border-color: var(--status-ready); box-shadow: var(--glow-green); }
-.camera-card.on_air { border-color: var(--status-on-air); box-shadow: var(--glow-red); }
+.camera-card.on_air { border-color: var(--status-on-air); box-shadow: var(--glow-red); transform: scale(1.02); }
 
 .camera-status-badge {
     position: absolute;
@@ -392,7 +392,6 @@ svg { display: block; }
     z-index: 20;
 }
 
-/* ===== CRÍTICO: CAMERA PREVIEW & VIDEO ===== */
 .camera-preview {
     width: 100%;
     aspect-ratio: 16/9;
@@ -404,67 +403,8 @@ svg { display: block; }
     overflow: hidden;
 }
 
-/* REFORZADO: Video siempre proporcional */
-.camera-video {
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    object-fit: cover !important;
-    display: block !important;
-    z-index: 1 !important;
-}
-
-/* Loader para videos */
-.video-loader {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(10px);
-    z-index: 10;
-    gap: 12px;
-}
-
-.loader-spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid rgba(255, 255, 255, 0.1);
-    border-top-color: var(--brand-red);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-.loader-text {
-    color: var(--text-secondary);
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.loader-error {
-    font-size: 32px;
-    opacity: 0.5;
-}
-
-.preview-empty { 
-    color: var(--text-muted); 
-    font-size: 13px; 
-    text-align: center; 
-    padding: 2rem 1rem; 
-    font-weight: 500;
-    position: relative;
-    z-index: 1;
-}
+.camera-video { width: 100%; height: 100%; object-fit: cover; }
+.preview-empty { color: var(--text-muted); font-size: 13px; text-align: center; padding: 2rem 1rem; font-weight: 500; }
 
 /* ===== INFO BAR ===== */
 .camera-info-bar {

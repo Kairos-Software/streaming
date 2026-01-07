@@ -7,7 +7,7 @@ __pycache__/
 db.sqlite3
 
 # Variables de entorno (Claves secretas)
-.env
+.env.local
 
 # Carpeta de entorno virtual
 venv/
@@ -16,3 +16,4 @@ env/
 # Archivos de sistema operativo
 .DS_Store
 Thumbs.db
+

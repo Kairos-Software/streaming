@@ -1,151 +1,182 @@
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
-# Directorio base del proyecto
+# =========================
+# ENV
+# =========================
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env.local")
 
-# Seguridad
-SECRET_KEY = 'django-insecure-zg0x2j(fv!$23%u92=%293997w^#8kd)!5^j*=bpld^)zpkskc'
+# =========================
+# SEGURIDAD
+# =========================
+SECRET_KEY = os.getenv("SECRET_KEY", "insecure-dev-key")
 
-# En desarrollo lo dejamos en True, en producción debe ser False
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
-# Hosts permitidos
-ALLOWED_HOSTS = [
-    "127.0.0.1",
-    "localhost",
-    "192.168.0.186",
-    "kaircampanel.grupokairosarg.com",  # Dominio de producción
-    "85.209.92.238",  # IP de la VPS
-]
+ALLOWED_HOSTS = os.getenv(
+    "ALLOWED_HOSTS",
+    "127.0.0.1,localhost"
+).split(",")
 
+# 🔧 Fix: filtramos valores vacíos
+raw_origins = os.getenv("CSRF_TRUSTED_ORIGINS", "")
+CSRF_TRUSTED_ORIGINS = [o for o in raw_origins.split(",") if o]
 
-# Aplicaciones instaladas
+# =========================
+# APLICACIONES
+# =========================
 INSTALLED_APPS = [
-    'daphne',
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'channels',
-    'core',  # tu app principal
-    'django_otp',
-    'django_otp.plugins.otp_totp',
+    "daphne",
 
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+
+    "channels",
+    "django_otp",
+    "django_otp.plugins.otp_totp",
+
+    "core",
 ]
 
-# Middleware
+# =========================
+# MIDDLEWARE
+# =========================
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django_otp.middleware.OTPMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django_otp.middleware.OTPMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-# Configuración de URLs
-ROOT_URLCONF = 'streaming.urls'
+# =========================
+# URLS / ASGI / WSGI
+# =========================
+ROOT_URLCONF = "streaming.urls"
 
-# Configuración de plantillas
+WSGI_APPLICATION = "streaming.wsgi.application"
+ASGI_APPLICATION = "streaming.asgi.application"
+
+# =========================
+# TEMPLATES
+# =========================
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'templates')],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-# WSGI
-WSGI_APPLICATION = 'streaming.wsgi.application'
-ASGI_APPLICATION = "streaming.asgi.application"
+# =========================
+# DATABASE
+# =========================
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_NAME"),
+        "USER": os.getenv("DB_USER"),
+        "PASSWORD": os.getenv("DB_PASSWORD"),
+        "HOST": os.getenv("DB_HOST", "localhost"),
+        "PORT": os.getenv("DB_PORT", "5432"),
+    }
+}
 
-# Configuración de Channels (Redis)
+# =========================
+# CHANNELS + REDIS
+# =========================
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)], # Asegúrate que tu Redis corra aquí
+            "hosts": [(
+                os.getenv("REDIS_HOST", "127.0.0.1"),
+                int(os.getenv("REDIS_PORT", "6379")),
+            )],
         },
     },
 }
 
-# Base de datos (PostgreSQL desde el inicio)
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'streaming2',              # nombre exacto de la base en tu VPS
-        'USER': 'postgres',         # usuario que creaste en PostgreSQL
-        'PASSWORD': 'Psrs950599',  # la contraseña de ese usuario
-        'HOST': 'localhost',         # IP pública de tu VPS
-        'PORT': '5432',                   # puerto de PostgreSQL
-    }
-}
-
-# Validación de contraseñas
+# =========================
+# PASSWORD VALIDATORS
+# =========================
 AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-# Internacionalización
-LANGUAGE_CODE = 'es-ar'
-TIME_ZONE = 'America/Argentina/Buenos_Aires'
+# =========================
+# INTERNACIONALIZACIÓN
+# =========================
+LANGUAGE_CODE = "es-ar"
+TIME_ZONE = "America/Argentina/Buenos_Aires"
 USE_I18N = True
 USE_TZ = True
 
-# Archivos estáticos
-STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+# =========================
+# STATIC & MEDIA
+# =========================
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# Archivos multimedia (si subís imágenes/videos)
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
-# Tipo de clave primaria por defecto
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-
+# =========================
+# AUTH
+# =========================
 LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/login/"
 
-# --- CONFIGURACIÓN DE CORREO (Desarrollo) ---
-# Esto hará que el link de recuperación aparezca en tu terminal (pantalla negra)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# =========================
+# EMAIL (GMAIL)
+# =========================
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 
-# ==============================================================================
-# CONFIGURACIÓN DE STREAMING (URLs y Puertos)
-# ==============================================================================
-# Para desarrollo local, estos valores funcionan por defecto
-# Para producción en VPS, cambiar según corresponda
+# =========================
+# STREAMING / ENTORNO
+# =========================
+STREAMING_MODE = os.getenv("STREAMING_MODE", "local")
 
-# URL base para HLS (streams individuales y programa)
-# Desarrollo: http://localhost:8080
-# Producción: https://kaircampanel.grupokairosarg.com:9443 (HTTPS) o http://kaircampanel.grupokairosarg.com:9080 (HTTP)
-HLS_BASE_URL = os.environ.get('HLS_BASE_URL', 'http://localhost:8080')
+# HLS: URLs y ruta en disco provistas por .env (ya incluyen /hls según entorno)
+HLS_SERVER_URL_HTTP = os.getenv("HLS_SERVER_URL_HTTP")
+HLS_SERVER_URL_HTTPS = os.getenv("HLS_SERVER_URL_HTTPS")
+HLS_PATH = os.getenv("HLS_PATH")
 
-# URL RTMP pública (la que se muestra al usuario para conectar OBS)
-# Desarrollo: rtmp://127.0.0.1:1935/live
-# Producción: rtmp://kaircampanel.grupokairosarg.com:9000/live
-RTMP_PUBLIC_URL = os.environ.get('RTMP_PUBLIC_URL', 'rtmp://127.0.0.1:1935/live')
+def get_hls_base_url():
+    if STREAMING_MODE == "production" and HLS_SERVER_URL_HTTPS:
+        return HLS_SERVER_URL_HTTPS
+    return HLS_SERVER_URL_HTTP or "http://127.0.0.1:8080/hls"
 
-# URL RTMP interna (para FFmpeg, siempre localhost)
-# Desarrollo: rtmp://127.0.0.1:9000
-# Producción: rtmp://127.0.0.1:9000 (igual, es interno)
-RTMP_INTERNAL_HOST = os.environ.get('RTMP_INTERNAL_HOST', '127.0.0.1')
-RTMP_INTERNAL_PORT = os.environ.get('RTMP_INTERNAL_PORT', '9000')
+HLS_BASE_URL = get_hls_base_url()
+
+# FFmpeg y RTMP interno (para reenvío program)
+FFMPEG_BIN_PATH = os.getenv("FFMPEG_BIN_PATH", "ffmpeg")
+RTMP_SERVER_HOST_INTERNAL = os.getenv("RTMP_SERVER_HOST_INTERNAL", "127.0.0.1")
+RTMP_SERVER_PORT_INTERNAL = int(os.getenv("RTMP_SERVER_PORT_INTERNAL", "9000"))

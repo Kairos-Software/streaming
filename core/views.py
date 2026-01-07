@@ -13,21 +13,15 @@ from django.contrib import messages
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.utils import timezone
-from django.conf import settings
 
 # --- TERCEROS ---
 from django_otp.plugins.otp_totp.models import TOTPDevice
 
 # --- LOCALES ---
 from .forms import ClienteForm, PinForm, ProfileSettingsForm, PreferenciasForm, NotificacionesForm
-from .models import Cliente, StreamConnection, CanalTransmision
+from .models import Cliente, StreamConnection
 # Servicios Websocket y Lógica
-from core.services.notificaciones_tiempo_real import (
-    notificar_actualizacion_camara,
-    notificar_camara_eliminada,
-    notificar_estado_completo_camaras,
-    notificar_estado_canal
-)
+from core.services.notificaciones_tiempo_real import notificar_camara_actualizada, notificar_camara_eliminada
 from core.services.estado_transmision import (
     poner_camara_al_aire,
     detener_transmision_usuario,
@@ -39,7 +33,7 @@ from core.services.ffmpeg_manager import stop_program_stream
 
 
 # ==============================================================================
-# SECCIÓN 1: AUTENTICACIÓN Y SEGURIDAD
+# SECCIÓN 1: AUTENTICACIÓN Y SEGURIDAD (Sin cambios)
 # ==============================================================================
 
 def login_view(request):
@@ -138,7 +132,7 @@ def tutorial(request):
 
 
 # ==============================================================================
-# SECCIÓN 3: GESTIÓN DE CÁMARAS
+# SECCIÓN 3: GESTIÓN DE CÁMARAS (USANDO SERVICIOS)
 # ==============================================================================
 
 @csrf_exempt
@@ -175,7 +169,7 @@ def validar_publicacion(request):
     )
 
     # 🔔 Notificamos al frontend vía WebSocket
-    notificar_actualizacion_camara(user, cam_index)
+    notificar_camara_actualizada(user, cam_index)
 
     return HttpResponse("OK")
 
@@ -227,7 +221,7 @@ def autorizar_camara(request, cam_index):
         conn.save()
         
         # 🔔 WebSocket Update
-        notificar_actualizacion_camara(request.user, cam_index)
+        notificar_camara_actualizada(request.user, cam_index)
 
         return JsonResponse({"ok": True})
         
@@ -239,7 +233,7 @@ def autorizar_camara(request, cam_index):
 @require_POST
 def poner_al_aire(request, cam_index):
     """
-    Frontend -> Django. Pone una cámara al aire.
+    Frontend -> Django. Usa el servicio de Marcos.
     """
     try:
         poner_camara_al_aire(request.user, cam_index)
@@ -255,7 +249,7 @@ def poner_al_aire(request, cam_index):
 @require_POST
 def detener_transmision(request):
     """
-    Frontend -> Django. Detiene la transmisión activa.
+    Frontend -> Django. Usa el servicio de Marcos.
     """
     detener_transmision_usuario(request.user)
     return JsonResponse({"ok": True})
@@ -265,7 +259,7 @@ def detener_transmision(request):
 @require_POST
 def rechazar_camara(request, cam_index):
     """
-    Frontend -> Django. Rechaza una solicitud pendiente.
+    Frontend -> Django.
     """
     cerrar_camara_usuario(request.user, cam_index)
     return JsonResponse({"ok": True})
@@ -275,7 +269,7 @@ def rechazar_camara(request, cam_index):
 @require_POST
 def cerrar_camara(request, cam_index):
     """
-    Frontend -> Django. Cierra una cámara (botón 'X').
+    Frontend -> Django. (Botón 'X').
     """
     cerrar_camara_usuario(request.user, cam_index)
     return JsonResponse({"ok": True})
@@ -284,49 +278,29 @@ def cerrar_camara(request, cam_index):
 @login_required
 def estado_camaras(request):
     """
-    Snapshot inicial cuando se carga la página.
-    Devuelve el estado de TODAS las cámaras + el estado del canal.
+    Snapshot inicial (Polling inicial).
     """
-    # Limpiamos conexiones antiguas
     limpiar_conexiones_huerfanas(request.user)
 
-    # Obtenemos todas las cámaras
     conexiones = StreamConnection.objects.filter(user=request.user)
-    cameras_data = {}
+    data = {}
     
     for conn in conexiones:
         hls_url = None
         if conn.status in (StreamConnection.Status.READY, StreamConnection.Status.ON_AIR):
-            hls_url = f"{settings.HLS_BASE_URL}/hls/live/{conn.stream_key}.m3u8"
+            hls_url = f"http://localhost:8080/hls/live/{conn.stream_key}.m3u8"
 
-        cameras_data[str(conn.cam_index)] = {
+        data[str(conn.cam_index)] = {
             "status": conn.status,
             "authorized": conn.authorized,
             "hls_url": hls_url,
         }
 
-    # Obtenemos el estado del canal (preview principal)
-    try:
-        canal = CanalTransmision.objects.get(usuario=request.user)
-        canal_data = {
-            "en_vivo": canal.en_vivo,
-            "hls_url": canal.url_hls if canal.en_vivo else None
-        }
-    except CanalTransmision.DoesNotExist:
-        canal_data = {
-            "en_vivo": False,
-            "hls_url": None
-        }
-
-    return JsonResponse({
-        "ok": True, 
-        "cameras": cameras_data,
-        "canal": canal_data  # ← NUEVO: incluir estado del canal
-    })
+    return JsonResponse({"ok": True, "cameras": data})
 
 
 # ==============================================================================
-# SECCIÓN 4: ADMIN Y EXTRAS
+# SECCIÓN 4: ADMIN Y EXTRAS (Sin cambios)
 # ==============================================================================
 
 @user_passes_test(lambda u: u.is_superuser)
@@ -380,19 +354,20 @@ def eliminar_usuario(request, pk):
     return redirect("ver_usuarios")
 
 
-# ==============================================================================
-# SECCIÓN 5: AJUSTES DE PERFIL
-# ==============================================================================
+# --- AJUSTES DE PERFIL (Igual que antes) ---
 
 @login_required
 def gestionar_pin(request):
     try:
+        # Intentamos obtener el cliente
         cliente = Cliente.objects.get(user=request.user)
     except Cliente.DoesNotExist:
+        # SI NO EXISTE y es superusuario, lo creamos automáticamente
         if request.user.is_superuser:
             cliente = Cliente.objects.create(user=request.user)
             messages.success(request, "Se ha creado un perfil de Cliente para el Administrador.")
         else:
+            # Si es un usuario normal sin cliente, error
             messages.error(request, "No se encontró el perfil de cliente asociado.")
             return redirect('home')
 
@@ -508,7 +483,7 @@ def ajustes_notificaciones(request):
 
 @login_required
 def ajustes_conexiones(request):
-    rtmp_url = settings.RTMP_PUBLIC_URL
+    rtmp_url = "rtmp://127.0.0.1:1935/live"
     stream_key = f"{request.user.username}-cam1"
 
     return render(request, 'core/ajustes/conexiones.html', {

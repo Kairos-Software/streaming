@@ -1,34 +1,45 @@
+# core/consumers.py
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class PanelConsumer(AsyncJsonWebsocketConsumer):
+
     async def connect(self):
-        user = self.scope["user"]
-        if user.is_authenticated:
+        user = self.scope.get("user")
+
+        if user and user.is_authenticated:
             self.group_name = f"usuario_{user.id}"
-            await self.channel_layer.group_add(self.group_name, self.channel_name)
+            await self.channel_layer.group_add(
+                self.group_name,
+                self.channel_name
+            )
             await self.accept()
-            print(f"✅ [WS] Usuario {user.id} conectado al grupo {self.group_name}")
+            logger.info(f"[WS] Usuario {user.id} conectado")
         else:
-            await self.close()
+            await self.close(code=4001)
 
     async def disconnect(self, close_code):
-        if hasattr(self, 'group_name'):
-            await self.channel_layer.group_discard(self.group_name, self.channel_name)
-            print(f"⚠️ [WS] Usuario desconectado del grupo {self.group_name}")
+        if hasattr(self, "group_name"):
+            await self.channel_layer.group_discard(
+                self.group_name,
+                self.channel_name
+            )
+            logger.info(f"[WS] Usuario desconectado ({close_code})")
 
     # ======================
-    # HANDLERS
+    # HANDLERS DESDE CHANNELS
     # ======================
+
     async def estado_camaras(self, event):
-        """Envía el estado completo de todas las cámaras (snapshot inicial)"""
         await self.send_json({
-            "tipo": "estado_camaras", 
+            "tipo": "estado_camaras",
             "cameras": event.get("cameras", {})
         })
 
     async def camara_actualizada(self, event):
-        """Envía la actualización de UNA cámara específica"""
         await self.send_json({
             "tipo": "camara_actualizada",
             "cam_index": event.get("cam_index"),
@@ -38,16 +49,14 @@ class PanelConsumer(AsyncJsonWebsocketConsumer):
         })
 
     async def camara_eliminada(self, event):
-        """Notifica que una cámara fue eliminada"""
         await self.send_json({
-            "tipo": "camara_eliminada", 
+            "tipo": "camara_eliminada",
             "cam_index": event.get("cam_index")
         })
 
     async def estado_canal(self, event):
-        """Notifica el estado del canal de transmisión (preview principal)"""
         await self.send_json({
             "tipo": "estado_canal",
             "en_vivo": event.get("en_vivo", False),
-            "hls_url": event.get("hls_url")  # ← CRÍTICO: debe incluir hls_url
+            "url_hls": event.get("url_hls"),
         })
