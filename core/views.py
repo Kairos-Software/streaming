@@ -134,9 +134,21 @@ def tutorial(request):
 # ==============================================================================
 # SECCIÓN 3: GESTIÓN DE CÁMARAS (USANDO SERVICIOS)
 # ==============================================================================
+import os
+from urllib.parse import urlparse
+
 
 @csrf_exempt
 def validar_publicacion(request):
+    # --- Validación de host permitido ---
+    tcurl = request.POST.get("tcurl", "")  # ej: rtmp://kaircam.grupokairosarg.com:9000/live
+    host = urlparse(tcurl).hostname or ""
+    allowed_host = os.getenv("RTMP_SERVER_HOST_PUBLIC", "").strip()
+
+    if not host or host != allowed_host:
+        return HttpResponseForbidden("Dominio RTMP no permitido")
+
+    # --- Tu lógica existente ---
     stream_key = request.POST.get("name") or request.GET.get("name")
     if not stream_key:
         return HttpResponseForbidden("Falta stream key")
@@ -166,10 +178,10 @@ def validar_publicacion(request):
         }
     )
 
-    # 🔔 Notificación WebSocket (el servicio debe construir hls_url según estado)
+    # 🔔 Notificación WebSocket
     notificar_camara_actualizada(user, cam_index)
 
-    print(f"[DEBUG] validar_publicacion: {stream_key} para usuario {username} (cam {cam_index})")
+    print(f"[DEBUG] validar_publicacion: host={host} tcurl={tcurl} stream_key={stream_key} usuario={username} (cam {cam_index})")
     return HttpResponse("OK")
 
 
