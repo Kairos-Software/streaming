@@ -2,96 +2,50 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>KAIRCAM LIVE - CONTROL CENTER</title>
-
-  <!-- Ícono -->
-  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'core/images/kaircam-icon.png' %}?v=5">
-
-  <!-- Fuentes -->
-  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
-
-  <!-- Tema y estilos -->
-  <meta name="theme-color" content="#0a0e1a">
-  <link rel="stylesheet" href="{% static 'core/css/login.css' %}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - KAIRCAM</title>
+    <link rel="stylesheet" href="{% static 'core/css/login.css' %}">
 </head>
-
-<!-- Fondo aplicado desde HTML -->
-<body class="login-body" style="background-image: url('{% static "core/images/fono.png" %}'); 
-                                 background-size: cover; 
-                                 background-position: center; 
-                                 background-repeat: no-repeat;">
-
-  <!-- Versión -->
-  <div class="version-tag">V2.0.4-STABLE</div>
-
-  <!-- Contenedor principal -->
+<body class="login-body">
   <div class="login-container">
     <div class="login-box">
-
-      <!-- Encabezado -->
+      
       <div class="login-brand">
-        <h1 class="brand-title">KAIRCAM <span class="live-badge">LIVE</span></h1>
-        <h2 class="login-title">CONTROL CENTER</h2>
-        <div class="login-subtitle">
-          <span class="subtitle-dot"></span>
-          <span>PRODUCCIÓN & STREAMING</span>
-        </div>
-        <div class="separator-line"></div>
+        <img src="{% static 'core/images/logokair.png' %}" alt="Logo" class="login-logo" />
+        <h2 class="login-title">KAIRCAM</h2>
+        <p class="login-subtitle">Production Control</p>
       </div>
 
-      <!-- Formulario -->
-      <form method="POST" action="" class="login-form">
+      <form method="POST" class="login-form">
         {% csrf_token %}
-
-        <div class="form-group">
-          <label for="username">NOMBRE DE USUARIO</label>
-          <input 
-            type="text" 
-            id="username" 
-            name="username" 
-            required 
-            autocomplete="username"
-          >
-        </div>
-
-        <div class="form-group">
-          <label for="password">CONTRASEÑA</label>
-          <div class="password-input-wrapper">
-            <input 
-              type="password" 
-              id="password" 
-              name="password" 
-              required 
-              autocomplete="current-password"
-            >
-            <span class="password-dots">●●●●●</span>
-          </div>
-        </div>
-
-        {% if form.errors %}
+        
+        {% if form.non_field_errors %}
         <div class="login-error">
-          Credenciales no válidas
+            {{ form.non_field_errors.0 }}
         </div>
         {% endif %}
 
-        <button type="submit" class="btn-login">INICIAR SESIÓN</button>
+        <div class="form-group">
+            <label for="id_username">Usuario</label>
+            <input type="text" name="username" class="form-control" placeholder="Ingrese su usuario" required id="id_username">
+        </div>
+
+        <div class="form-group">
+            <label for="id_password">Contraseña</label>
+            <input type="password" name="password" class="form-control" placeholder="Ingrese su contraseña" required id="id_password">
+        </div>
+
+        <button type="submit" class="btn-login">Ingresar</button>
       </form>
 
-      <!-- Recuperar acceso -->
       <div class="forgot-password-link">
-        <a href="{% url 'password_reset' %}">¿HAS OLVIDADO TU CONTRASEÑA?</a>
+        <a href="{% url 'password_reset' %}">¿Olvidaste tu contraseña?</a>
       </div>
 
-      <!-- Footer -->
-      <div class="login-footer-wrapper">
-        <p class="login-footer">© copyright de licanes</p>
-      </div>
+      <p class="login-footer">© 2025 Grupo Kairos</p>
 
     </div>
   </div>
-
-  <script src="{% static 'core/js/login.js' %}"></script>
 </body>
 </html>

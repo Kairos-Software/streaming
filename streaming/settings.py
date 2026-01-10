@@ -38,6 +38,7 @@ CSRF_TRUSTED_ORIGINS = [o.strip() for o in raw_origins.split(",") if o]
 # ======================================================
 INSTALLED_APPS = [
     "daphne",
+    "core",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -47,7 +48,6 @@ INSTALLED_APPS = [
     "channels",
     "django_otp",
     "django_otp.plugins.otp_totp",
-    "core",
 ]
 
 # ======================================================

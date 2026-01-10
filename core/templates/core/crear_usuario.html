@@ -1,53 +1,59 @@
 {% extends "core/base.html" %}
+{% load static %}
 
 {% block title %}Crear Usuario - KAIRCAM{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'core/css/crear_usuario.css' %}">
+{% endblock extra_css %}
+
 {% block content %}
-<div class="studio-card">
-    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
-        <div>
-            <h2 class="studio-title">Nuevo Cliente</h2>
-            <p class="studio-subtitle">Registrar usuario para streaming</p>
-        </div>
-        <div style="background: rgba(16, 185, 129, 0.1); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--status-ready);">
-            <i class="fas fa-user-plus"></i>
-        </div>
-    </div>
-
-    <form method="post" enctype="multipart/form-data">
-        {% csrf_token %}
-        
-        {% for field in form %}
-            <div class="form-group-studio">
-                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                {{ field }}
-                {% if field.help_text %}
-                    <span class="helptext">{{ field.help_text }}</span>
-                {% endif %}
-                {% if field.errors %}
-                    <span style="color: var(--brand-red); font-size: 12px; font-weight: bold;">
-                        {{ field.errors.0 }}
-                    </span>
-                {% endif %}
+<div class="page-container">
+    <div class="studio-card">
+        <div class="card-header">
+            <div class="header-text">
+                <h2 class="studio-title">Nuevo Cliente</h2>
+                <p class="studio-subtitle">Registrar usuario para streaming</p>
             </div>
-        {% endfor %}
-
-        <div style="display: flex; gap: 12px; margin-top: 32px;">
-            <a href="{% url 'home' %}" class="btn-studio btn-studio-secondary" style="flex: 1; text-align: center; justify-content: center;">
-                Cancelar
-            </a>
-            <button type="submit" class="btn-studio" style="flex: 2;">
-                Guardar Cliente
-            </button>
+            <div class="header-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="8.5" cy="7" r="4"></circle>
+                    <line x1="20" y1="8" x2="20" y2="14"></line>
+                    <line x1="23" y1="11" x2="17" y2="11"></line>
+                </svg>
+            </div>
         </div>
-    </form>
-</div>
 
-<style>
-    /* Aseguramos que los inputs generados por {{ field }} tomen el ancho completo */
-    .form-group-studio input, .form-group-studio select, .form-group-studio textarea {
-        width: 100%;
-        box-sizing: border-box;
-    }
-</style>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <div class="form-grid">
+                {% for field in form %}
+                    <div class="form-group-studio {% if field.name == 'bio' or field.name == 'notes' %}full-width{% endif %}">
+                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}
+                            <small class="help-text">{{ field.help_text }}</small>
+                        {% endif %}
+                        {% if field.errors %}
+                            <div class="error-msg">
+                                {{ field.errors.0 }}
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div class="form-actions">
+                <a href="{% url 'home' %}" class="btn-cancel">
+                    Cancelar
+                </a>
+                <button type="submit" class="btn-submit">
+                    Guardar Cliente
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}

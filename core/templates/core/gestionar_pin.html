@@ -14,11 +14,11 @@
             <p class="page-subtitle">Configura el PIN de seguridad para conectar cámaras externas.</p>
         </div>
 
-        <div class="settings-card pin-card">
+        <div class="pin-card">
             
             <div class="card-header-row">
                 <div class="section-subtitle">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" color="var(--brand-red)">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                         <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                     </svg>
@@ -27,7 +27,7 @@
                 
                 <a href="{% url 'home' %}" class="btn-back">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-                    Volver al Panel
+                    Volver
                 </a>
             </div>
 
@@ -50,7 +50,10 @@
                         <span id="pinReal" class="pin-text hidden">{{ cliente.pin }}</span>
                         
                         <button type="button" class="btn-icon-action" id="btnTogglePin" title="Ver/Ocultar">
-                            <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
                         </button>
                     </div>
 
@@ -65,7 +68,7 @@
                         <span class="dot"></span> NO CONFIGURADO
                     </div>
                     <p class="empty-state-text">
-                        Aún no has creado un PIN. Necesitas uno para autorizar cámaras desde la app móvil o fuentes externas.
+                        Aún no has creado un PIN. Necesitas uno para autorizar cámaras desde la app móvil.
                     </p>
                     <button type="button" class="btn-primary" id="btnEstablecerPin">
                         Crear PIN Ahora
@@ -86,7 +89,7 @@
                     <div class="form-group">
                         <label>Ingresa un código numérico (4-8 dígitos)</label>
                         <input type="password" name="pin" class="settings-input" placeholder="Ej: 1234" required pattern="[0-9]{4,8}">
-                        <small>Este código será requerido cada vez que conectes una nueva cámara.</small>
+                        <small>Este código será requerido al conectar una nueva cámara.</small>
                     </div>
 
                     <div class="form-actions">
