@@ -8,23 +8,20 @@ from core.models import StreamConnection, CanalTransmision
 # ===============================
 def hls_url_for_connection(conn):
     """
-    Genera la URL de HLS según el estado de la conexión.
-    READY -> live/<stream_key>.m3u8
-    ON_AIR -> program/<username>.m3u8
+    Genera la URL de HLS para la cámara individual.
+    IMPORTANTE: Siempre devolvemos la URL de 'live' (la fuente original),
+    incluso si está ON_AIR. El 'program' solo se usa en el reproductor principal.
     """
-    if conn.status == StreamConnection.Status.READY:
+    if conn.status in [StreamConnection.Status.READY, StreamConnection.Status.ON_AIR]:
+        # Siempre usamos /live/ para ver la cámara individual
         url = f"{settings.HLS_BASE_URL}/live/{conn.stream_key}.m3u8"
-    elif conn.status == StreamConnection.Status.ON_AIR:
-        url = f"{settings.HLS_BASE_URL}/program/{conn.user.username}.m3u8"
     else:
         url = None
+        
     print(f"[DEBUG] HLS URL generada para {conn.stream_key} ({conn.status}): {url}")
     return url
 
-
-# ===============================
-# NOTIFICACIÓN ACTUALIZACIÓN DE CÁMARAS
-# ===============================
+# ... (El resto del archivo sigue igual) ...
 def notificar_actualizacion_camara(user, cam_index=None):
     conexiones = StreamConnection.objects.filter(user=user)
     data = {}
@@ -57,9 +54,6 @@ def notificar_actualizacion_camara(user, cam_index=None):
         print(f"[ERROR] No se pudo notificar cámaras de {user.username}: {e}")
 
 
-# ===============================
-# NOTIFICACIÓN CAMARA ACTUALIZADA
-# ===============================
 def notificar_camara_actualizada(user, cam_index):
     try:
         c = StreamConnection.objects.get(user=user, cam_index=cam_index)
@@ -86,9 +80,6 @@ def notificar_camara_actualizada(user, cam_index):
         print(f"[ERROR] No se pudo notificar cámara {cam_index} de {user.username}: {e}")
 
 
-# ===============================
-# NOTIFICACIÓN CAMARA ELIMINADA
-# ===============================
 def notificar_camara_eliminada(user, cam_index):
     try:
         layer = get_channel_layer()
@@ -104,9 +95,6 @@ def notificar_camara_eliminada(user, cam_index):
         print(f"[ERROR] No se pudo notificar eliminación de cámara {cam_index} de {user.username}: {e}")
 
 
-# ===============================
-# NOTIFICACIÓN ESTADO CANAL
-# ===============================
 def notificar_estado_canal(user):
     canal = CanalTransmision.objects.filter(usuario=user).first()
     try:
@@ -116,10 +104,9 @@ def notificar_estado_canal(user):
             {
                 "type": "estado_canal",
                 "en_vivo": canal.en_vivo if canal else False,
-                "hls_url": canal.url_hls if canal else None,  # corregido
+                "hls_url": canal.url_hls if canal else None,
             },
         )
         print(f"[DEBUG] Notificación estado canal enviada a {user.username}")
     except Exception as e:
         print(f"[ERROR] No se pudo notificar estado canal de {user.username}: {e}")
-

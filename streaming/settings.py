@@ -161,6 +161,7 @@ STREAMING_MODE = os.getenv("STREAMING_MODE", "local")
 HLS_SERVER_URL_HTTP = os.getenv("HLS_SERVER_URL_HTTP")
 HLS_SERVER_URL_HTTPS = os.getenv("HLS_SERVER_URL_HTTPS")
 HLS_PATH = os.getenv("HLS_PATH")
+HLS_PROGRAM_PATH = os.path.join(HLS_PATH, "program")
 
 def get_hls_base_url():
     if STREAMING_MODE == "production" and HLS_SERVER_URL_HTTPS:

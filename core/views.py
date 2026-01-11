@@ -140,34 +140,46 @@ from urllib.parse import urlparse
 
 @csrf_exempt
 def validar_publicacion(request):
-    # --- Validación de host permitido ---
-    tcurl = request.POST.get("tcurl", "")  # ej: rtmp://kaircam.grupokairosarg.com:9000/live
-    host = urlparse(tcurl).hostname or ""
-    allowed_host = os.getenv("RTMP_SERVER_HOST_PUBLIC", "").strip()
-
-    if not host or host != allowed_host:
-        return HttpResponseForbidden("Dominio RTMP no permitido")
-
-    # --- Tu lógica existente ---
+    tcurl = request.POST.get("tcurl", "")
     stream_key = request.POST.get("name") or request.GET.get("name")
+    
+    # ---------------------------------------------------------
+    # 1. SEGURIDAD DE HOST (Inteligente)
+    # ---------------------------------------------------------
+    # Solo activamos la seguridad estricta si NO estamos en modo DEBUG (Producción/VPS)
+    if not settings.DEBUG:
+        host = urlparse(tcurl).hostname or ""
+        allowed_host = settings.RTMP_SERVER_HOST_PUBLIC
+
+        if host and host != allowed_host:
+            print(f"[ALERTA] Intento de conexión desde host no permitido: {host}")
+            return HttpResponseForbidden("Dominio RTMP no permitido")
+
+    # ---------------------------------------------------------
+    # 2. VALIDACIÓN DE USUARIO Y KEY
+    # ---------------------------------------------------------
     if not stream_key:
         return HttpResponseForbidden("Falta stream key")
 
     try:
+        if "-cam" not in stream_key:
+             return HttpResponseForbidden("Formato inválido")
+             
         username, cam_part = stream_key.split("-cam")
         cam_index = int(cam_part)
-    except ValueError:
-        return HttpResponseForbidden("Formato inválido de stream_key")
-
-    try:
+        
         user = User.objects.get(username=username)
+        # Verificamos que el cliente tenga perfil y esté activo
         if not hasattr(user, "cliente") or not user.cliente.activo:
             return HttpResponseForbidden("Usuario inactivo")
-    except User.DoesNotExist:
-        return HttpResponseForbidden("Usuario no encontrado")
+            
+    except (ValueError, User.DoesNotExist):
+        return HttpResponseForbidden("Credenciales inválidas")
 
-    # Crear o actualizar conexión PENDING
-    conn, created = StreamConnection.objects.update_or_create(
+    # ---------------------------------------------------------
+    # 3. REGISTRO DE CONEXIÓN
+    # ---------------------------------------------------------
+    StreamConnection.objects.update_or_create(
         user=user,
         cam_index=cam_index,
         defaults={
@@ -178,10 +190,9 @@ def validar_publicacion(request):
         }
     )
 
-    # 🔔 Notificación WebSocket
+    # Notificar al frontend
     notificar_camara_actualizada(user, cam_index)
 
-    print(f"[DEBUG] validar_publicacion: host={host} tcurl={tcurl} stream_key={stream_key} usuario={username} (cam {cam_index})")
     return HttpResponse("OK")
 
 
@@ -292,21 +303,21 @@ def estado_camaras(request):
     from core.services.estado_transmision import limpiar_conexiones_huerfanas
     from core.models import CanalTransmision
 
-    # Limpieza de huérfanas
-    limpiar_conexiones_huerfanas(request.user)
-
-    # 🚫 Ya no llamamos a reconciliar_estado_canal aquí
-    # Solo devolvemos snapshot de DB
+    # --- CORRECCIÓN BUG CORTES AL NAVEGAR ---
+    # COMENTAMOS ESTA LÍNEA para evitar que la navegación entre páginas
+    # (que desconecta el socket momentáneamente) mate el proceso FFmpeg.
+    # limpiar_conexiones_huerfanas(request.user)
 
     conexiones = StreamConnection.objects.filter(user=request.user)
     data = {}
 
     for conn in conexiones:
         hls_url = None
-        if conn.status == StreamConnection.Status.READY:
+        # --- CORRECCIÓN BUG IMÁGENES DUPLICADAS ---
+        # Siempre devolvemos la URL de la fuente (live) para las tarjetas de cámara,
+        # incluso si están ON_AIR. El preview principal usará la del canal (program).
+        if conn.status in [StreamConnection.Status.READY, StreamConnection.Status.ON_AIR]:
             hls_url = f"{settings.HLS_BASE_URL}/live/{conn.stream_key}.m3u8"
-        elif conn.status == StreamConnection.Status.ON_AIR:
-            hls_url = f"{settings.HLS_BASE_URL}/program/{request.user.username}.m3u8"
 
         data[str(conn.cam_index)] = {
             "status": conn.status,
