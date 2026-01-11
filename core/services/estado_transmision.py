@@ -2,7 +2,7 @@ from django.utils import timezone
 from django.db import transaction
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
-
+import os
 from core.models import StreamConnection, CanalTransmision
 from core.services.ffmpeg_manager import start_program_stream, stop_program_stream
 from core.services.notificaciones_tiempo_real import (
@@ -52,6 +52,7 @@ def poner_camara_al_aire(user, cam_index):
     """
     Cambia el estado de la cámara a ON_AIR, detiene el program anterior,
     inicia FFMPEG para esta cámara y notifica al frontend.
+    El canal se marca en_vivo=True solo si el archivo HLS existe.
     """
     with transaction.atomic():
         # Cualquier cámara previa ON_AIR se pone en READY
@@ -91,11 +92,28 @@ def poner_camara_al_aire(user, cam_index):
         print(f"[DEBUG] Iniciando program stream de {user.username} con clave {conn.stream_key}")
         start_program_stream(user=user, stream_key=conn.stream_key)
 
-        # Actualizamos canal principal (usar solo el username)
+        # ===============================
+        # VALIDACIÓN DEL ARCHIVO HLS
+        # ===============================
+        ruta_m3u8 = os.path.join(
+            settings.HLS_PROGRAM_PATH,  # ej: D:/nginx-rtmp/nginx-rtmp-win32-dev/temp/hls/program
+            f"{user.username}",
+            "master.m3u8"
+        )
+
         canal, _ = CanalTransmision.objects.get_or_create(usuario=user)
-        canal.en_vivo = True
-        canal.inicio_transmision = timezone.now()
-        canal.url_hls = f"{settings.HLS_BASE_URL}/program/{user.username}.m3u8"
+
+        if os.path.exists(ruta_m3u8):
+            print(f"[DEBUG] Archivo HLS encontrado: {ruta_m3u8}")
+            canal.en_vivo = True
+            canal.inicio_transmision = timezone.now()
+            canal.url_hls = f"{settings.HLS_BASE_URL}/program/{user.username}.m3u8"
+        else:
+            print(f"[WARN] No se encontró master.m3u8 para {user.username}, marcando canal como OFFLINE")
+            canal.en_vivo = False
+            canal.inicio_transmision = None
+            canal.url_hls = ""
+
         canal.save(update_fields=["en_vivo", "inicio_transmision", "url_hls"])
 
         # Notificación de estado general del canal
@@ -107,7 +125,8 @@ def poner_camara_al_aire(user, cam_index):
 # ===============================
 def cerrar_camara_usuario(user, cam_index):
     """
-    Elimina la cámara y notifica al frontend
+    Elimina la cámara y notifica al frontend.
+    Si no quedan cámaras ON_AIR, apaga el canal.
     """
     eliminado, _ = StreamConnection.objects.filter(
         user=user,
@@ -117,6 +136,21 @@ def cerrar_camara_usuario(user, cam_index):
     if eliminado > 0:
         print(f"[DEBUG] Cámara {cam_index} de {user.username} eliminada")
         notificar_camara_eliminada(user, cam_index)
+
+    # Si no queda ninguna ON_AIR, apagamos el canal
+    hay_on_air = StreamConnection.objects.filter(
+        user=user,
+        status=StreamConnection.Status.ON_AIR,
+    ).exists()
+
+    if not hay_on_air:
+        print(f"[DEBUG] No quedan cámaras ON_AIR para {user.username}. Apagando canal.")
+        canal, _ = CanalTransmision.objects.get_or_create(usuario=user)
+        canal.en_vivo = False
+        canal.inicio_transmision = None
+        canal.url_hls = ""
+        canal.save(update_fields=["en_vivo", "inicio_transmision", "url_hls"])
+        notificar_estado_canal(user)
 
 
 # ===============================
@@ -149,3 +183,35 @@ def limpiar_conexiones_huerfanas(usuario=None, segundos_timeout=120):
     conexiones.delete()
     print(f"[DEBUG] Total conexiones huérfanas eliminadas: {cantidad}")
     return cantidad
+
+
+def reconciliar_estado_canal(user):
+    """
+    Mantiene el estado del canal en función de las cámaras ON_AIR y el archivo HLS.
+    """
+    hay_on_air = StreamConnection.objects.filter(
+        user=user,
+        status=StreamConnection.Status.ON_AIR,
+    ).exists()
+
+    canal, _ = CanalTransmision.objects.get_or_create(usuario=user)
+
+    ruta_m3u8 = os.path.join(
+        r"D:\nginx-rtmp\nginx-rtmp-win32-dev\temp\hls\program",
+        f"{user.username}.m3u8"
+    )
+
+    if hay_on_air and os.path.exists(ruta_m3u8):
+        if not canal.en_vivo:
+            canal.en_vivo = True
+            canal.url_hls = f"{settings.HLS_BASE_URL}/program/{user.username}.m3u8"
+            canal.inicio_transmision = timezone.now()
+            canal.save(update_fields=["en_vivo", "url_hls", "inicio_transmision"])
+            notificar_estado_canal(user)
+    else:
+        if canal.en_vivo:
+            canal.en_vivo = False
+            canal.inicio_transmision = None
+            canal.url_hls = ""
+            canal.save(update_fields=["en_vivo", "inicio_transmision", "url_hls"])
+            notificar_estado_canal(user)

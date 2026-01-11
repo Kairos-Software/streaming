@@ -19,9 +19,9 @@ from django_otp.plugins.otp_totp.models import TOTPDevice
 
 # --- LOCALES ---
 from .forms import ClienteForm, PinForm, ProfileSettingsForm, PreferenciasForm, NotificacionesForm
-from .models import Cliente, StreamConnection
+from .models import Cliente, StreamConnection, CanalTransmision
 # Servicios Websocket y Lógica
-from core.services.notificaciones_tiempo_real import notificar_camara_actualizada, notificar_camara_eliminada
+from core.services.notificaciones_tiempo_real import notificar_camara_actualizada, notificar_camara_eliminada, notificar_estado_canal
 from core.services.estado_transmision import (
     poner_camara_al_aire,
     detener_transmision_usuario,
@@ -200,7 +200,17 @@ def stream_finalizado(request):
         stop_program_stream(user)
         cerrar_camara_usuario(user, cam_index)
 
-        print(f"[DEBUG] stream_finalizado: {stream_key} usuario {username} cam {cam_index}")
+        # 🔴 Actualizar canal principal a OFFLINE
+        canal, _ = CanalTransmision.objects.get_or_create(usuario=user)
+        canal.en_vivo = False
+        canal.inicio_transmision = None
+        canal.url_hls = ""
+        canal.save(update_fields=["en_vivo", "inicio_transmision", "url_hls"])
+
+        # Notificar estado al frontend
+        notificar_estado_canal(user)
+
+        print(f"[DEBUG] stream_finalizado: {stream_key} usuario {username} cam {cam_index} OFFLINE")
 
     except Exception as e:
         print(f"[ERROR] stream_finalizado: {e}")
@@ -282,19 +292,20 @@ def estado_camaras(request):
     from core.services.estado_transmision import limpiar_conexiones_huerfanas
     from core.models import CanalTransmision
 
+    # Limpieza de huérfanas
     limpiar_conexiones_huerfanas(request.user)
+
+    # 🚫 Ya no llamamos a reconciliar_estado_canal aquí
+    # Solo devolvemos snapshot de DB
 
     conexiones = StreamConnection.objects.filter(user=request.user)
     data = {}
 
     for conn in conexiones:
         hls_url = None
-
         if conn.status == StreamConnection.Status.READY:
-            # Cada cámara lista se expone con su stream key
             hls_url = f"{settings.HLS_BASE_URL}/live/{conn.stream_key}.m3u8"
         elif conn.status == StreamConnection.Status.ON_AIR:
-            # La cámara al aire se refleja en la salida única del usuario
             hls_url = f"{settings.HLS_BASE_URL}/program/{request.user.username}.m3u8"
 
         data[str(conn.cam_index)] = {

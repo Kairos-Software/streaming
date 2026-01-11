@@ -4,8 +4,9 @@ from django.conf import settings
 # Diccionario global de procesos FFmpeg: {user_id: proceso}
 FFMPEG_PROCESSES = {}
 
+
 def stop_program_stream(user):
-    """Detiene el proceso FFmpeg del usuario si existe."""
+    """Detiene el proceso FFmpeg del usuario si existe y limpia el diccionario."""
     proc = FFMPEG_PROCESSES.get(user.id)
     if proc and proc.poll() is None:
         print(f"[DEBUG] Deteniendo FFMPEG para {user.username}")
@@ -20,15 +21,17 @@ def stop_program_stream(user):
 def start_program_stream(user, stream_key):
     """
     Inicia la retransmisión 'program' desde el RTMP interno.
-    - input_rtmp: live
-    - output_rtmp: program
+    Cada usuario mantiene su propio proceso FFmpeg.
     """
-    # Leer variables de entorno dinámicamente
     FFMPEG_BIN = settings.FFMPEG_BIN_PATH
     RTMP_HOST = settings.RTMP_SERVER_HOST_INTERNAL
     RTMP_PORT = settings.RTMP_SERVER_PORT_INTERNAL
 
-    stop_program_stream(user)
+    # Si ya hay un proceso corriendo para este usuario, no lo reiniciamos
+    proc = FFMPEG_PROCESSES.get(user.id)
+    if proc and proc.poll() is None:
+        print(f"[DEBUG] FFMPEG ya corriendo para {user.username}")
+        return
 
     input_rtmp = f"rtmp://{RTMP_HOST}:{RTMP_PORT}/live/{stream_key}"
     output_rtmp = f"rtmp://{RTMP_HOST}:{RTMP_PORT}/program/{user.username}"
@@ -46,11 +49,11 @@ def start_program_stream(user, stream_key):
     print("CMD:", " ".join(cmd))
 
     try:
+        # Usamos DEVNULL para evitar bloqueos por pipes llenos
         proc = subprocess.Popen(
             cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            universal_newlines=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.STDOUT
         )
     except Exception as e:
         print(f"[ERROR] No se pudo iniciar FFMPEG para {user.username}: {e}")
