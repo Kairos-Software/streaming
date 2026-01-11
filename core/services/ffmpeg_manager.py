@@ -5,6 +5,15 @@ from django.conf import settings
 FFMPEG_PROCESSES = {}
 
 
+def is_program_stream_running(user):
+    """
+    Retorna True si el proceso FFmpeg del usuario
+    está corriendo actualmente.
+    """
+    proc = FFMPEG_PROCESSES.get(user.id)
+    return proc is not None and proc.poll() is None
+
+
 def stop_program_stream(user):
     """Detiene el proceso FFmpeg del usuario si existe y limpia el diccionario."""
     proc = FFMPEG_PROCESSES.get(user.id)
@@ -49,7 +58,6 @@ def start_program_stream(user, stream_key):
     print("CMD:", " ".join(cmd))
 
     try:
-        # Usamos DEVNULL para evitar bloqueos por pipes llenos
         proc = subprocess.Popen(
             cmd,
             stdout=subprocess.DEVNULL,

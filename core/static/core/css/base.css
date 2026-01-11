@@ -463,15 +463,14 @@ svg { display: block; }
 .preview-empty { color: var(--text-muted); font-size: 13px; text-align: center; padding: 2rem 1rem; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; }
 
 /* ===== INFO BAR ===== */
-.camera-info-bar {
-    padding: 12px;
-    background: rgba(5, 5, 10, 0.6);
-    backdrop-filter: blur(10px);
-    min-height: 60px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    transition: all 250ms;
+.camera-info-bar.hidden-bar {
+    padding: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+    display: none !important;
 }
 
 .camera-info-bar.hidden-bar {

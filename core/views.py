@@ -13,7 +13,7 @@ from django.contrib import messages
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.utils import timezone
-
+from core.services.estado_transmision import notificar_estado_inicial_usuario
 # --- TERCEROS ---
 from django_otp.plugins.otp_totp.models import TOTPDevice
 
@@ -117,10 +117,11 @@ def logout_view(request):
 # ==============================================================================
 # SECCIÓN 2: VISTAS PRINCIPALES
 # ==============================================================================
-
 @login_required
 def home(request):
+    notificar_estado_inicial_usuario(request.user)
     return render(request, "core/home.html")
+
 
 @login_required
 def audio(request):
@@ -200,28 +201,26 @@ def validar_publicacion(request):
 def stream_finalizado(request):
     stream_key = request.POST.get("name") or request.GET.get("name")
     if not stream_key:
-        return HttpResponse("OK")  # no hacemos nada si no hay key
+        return HttpResponse("OK")
 
     try:
         username, cam_part = stream_key.split("-cam")
         cam_index = int(cam_part)
         user = User.objects.get(username=username)
 
-        # Detener cualquier retransmisión ON_AIR
-        stop_program_stream(user)
+        # Solo cerramos la cámara
         cerrar_camara_usuario(user, cam_index)
 
-        # 🔴 Actualizar canal principal a OFFLINE
-        canal, _ = CanalTransmision.objects.get_or_create(usuario=user)
-        canal.en_vivo = False
-        canal.inicio_transmision = None
-        canal.url_hls = ""
-        canal.save(update_fields=["en_vivo", "inicio_transmision", "url_hls"])
+        # Si ya no queda ninguna ON_AIR → apagamos todo
+        hay_on_air = StreamConnection.objects.filter(
+            user=user,
+            status=StreamConnection.Status.ON_AIR,
+        ).exists()
 
-        # Notificar estado al frontend
-        notificar_estado_canal(user)
+        if not hay_on_air:
+            detener_transmision_usuario(user)
 
-        print(f"[DEBUG] stream_finalizado: {stream_key} usuario {username} cam {cam_index} OFFLINE")
+        print(f"[DEBUG] stream_finalizado OK: {username} cam {cam_index}")
 
     except Exception as e:
         print(f"[ERROR] stream_finalizado: {e}")

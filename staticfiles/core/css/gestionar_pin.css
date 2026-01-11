@@ -1,135 +1,274 @@
-/* ======================================================
-   GESTIONAR PIN – POSICIÓN Y ESTILO COMBINADO
-====================================================== */
-
-/* 1. POSICIÓN: Centrado total en pantalla */
-body {
+/* === LAYOUT & ESPACIADO === */
+.pin-page-container {
+    background-color: transparent !important; /* CORRECCIÓN: Fondo transparente para ver el degradado global */
+    min-height: calc(100vh - 70px); /* Restamos la altura del header para que no se estire de más */
+    width: 100%;
+    /* Ajustamos el padding para centrarlo visualmente sin cortar el header */
+    padding-top: 4rem; 
+    padding-bottom: 2rem;
     display: flex;
-    align-items: center;
     justify-content: center;
-    min-height: 100vh;
-    margin: 0;
-    background-color: #05070a; /* Fondo ultra oscuro de la app */
+    align-items: center; /* Centrado vertical */
+}
+.pin-content-wrapper {
+    width: 100%;
+    max-width: 500px; /* Ancho compacto estilo tarjeta de acceso */
 }
 
-/* 2. ESTILO: Card inspirada en la segunda imagen */
-.gestion-pin-container {
-    width: 90%;
-    max-width: 550px;
-    background: linear-gradient(145deg, #1a2332 0%, #0a0e1a 100%);
-    border-radius: 24px;
-    padding: 40px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8);
-    color: #ffffff;
-    animation: cardIn 0.4s ease-out;
+/* === ENCABEZADO === */
+.pin-header {
+    text-align: center;
+    margin-bottom: 2rem;
 }
 
-@keyframes cardIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+.page-title {
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+    color: var(--text-white);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-shadow: 0 0 10px rgba(255,255,255,0.1);
 }
 
-/* ======================================================
-   HEADER (Estilo de la imagen 2)
-====================================================== */
-.header-section {
+.page-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+/* === TARJETA NEÓN === */
+.pin-card {
+    background: rgba(10, 14, 26, 0.9); /* Fondo oscuro semitransparente */
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--neon-red);
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.15); /* Glow rojo */
+    position: relative;
+    overflow: hidden;
+}
+
+/* Header de la tarjeta */
+.card-header-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 30px;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding-bottom: 1rem;
 }
 
-.header-section h1 {
-    font-size: 1.5rem;
-    font-weight: 800;
-    color: #ffffff;
-}
-
-/* Botón Volver (Estilo Ghost/Oscuro) */
-.btn-volver {
-    background: rgba(255, 255, 255, 0.05) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    color: #94a3b8 !important;
-    padding: 8px 16px;
-    border-radius: 8px;
-}
-
-/* ======================================================
-   PIN DISPLAY (Sección interna azulada)
-====================================================== */
-.pin-display-section {
-    background: rgba(15, 23, 42, 0.4);
-    border: 1px solid rgba(59, 130, 246, 0.1);
-    border-radius: 16px;
-    padding: 25px;
-    margin-bottom: 20px;
-}
-
-.pin-display-section h2 {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    color: #94a3b8;
-    margin-bottom: 10px;
-}
-
-/* Estilo de los puntos del PIN (Azules como en la imagen) */
-.pin-value-masked {
-    font-size: 2rem;
-    color: #3b82f6; /* El azul brillante de los puntos */
-    letter-spacing: 6px;
-    font-weight: bold;
-}
-
-.status-success {
-    color: #ffffff;
-    font-weight: 500;
-    margin-bottom: 15px;
-    font-size: 0.95rem;
-}
-
-/* ======================================================
-   BOTONES (Estilo Imagen 2)
-====================================================== */
-
-/* Botón Editar PIN (Azul Sólido) */
-#btnEditarPin, .btn-primary {
-    background: #3b82f6 !important;
-    color: white !important;
-    border: none !important;
-    padding: 12px 24px;
-    border-radius: 8px;
+.section-subtitle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     font-weight: 700;
-    font-size: 0.9rem;
-    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+    color: var(--brand-red);
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
-/* Botón Mostrar PIN (Estilo oscuro) */
-#btnTogglePin, .btn-secondary:not(.btn-volver) {
-    background: #1a2332 !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    color: #94a3b8 !important;
-    padding: 12px 24px;
-    border-radius: 8px;
+.btn-back {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.85rem;
     font-weight: 600;
+    transition: color 0.2s;
+    text-transform: uppercase;
 }
+.btn-back:hover { color: var(--text-white); }
+.btn-back svg { width: 16px; height: 16px; }
 
-/* Inputs del Formulario */
-.form-section input {
-    background: #05070a !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    border-radius: 10px !important;
-    padding: 14px !important;
-    color: white !important;
-}
-
-.text-muted {
-    display: block;
-    margin-top: 15px;
-    color: #64748b;
+/* === ESTADOS === */
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 4px;
     font-size: 0.8rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    margin-bottom: 1.5rem;
+    text-transform: uppercase;
+}
+
+.status-indicator.active {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+    border: 1px solid #10b981;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+}
+
+.status-indicator.warning {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+    border: 1px solid #f59e0b;
+}
+
+.dot {
+    width: 8px; height: 8px;
+    background: currentColor;
+    border-radius: 50%;
+    box-shadow: 0 0 5px currentColor;
+}
+
+/* Display del PIN */
+.current-pin-display {
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid var(--border-medium);
+    padding: 1.5rem;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.pin-text {
+    font-family: 'Courier New', monospace;
+    font-size: 1.8rem;
+    letter-spacing: 4px;
+    color: var(--text-white);
+    font-weight: 700;
+    text-shadow: 0 0 5px rgba(255,255,255,0.5);
 }
 
 .hidden { display: none !important; }
-hr { border: 0; border-top: 1px solid rgba(255, 255, 255, 0.05); margin: 30px 0; }
+
+/* Botón Ojo */
+.btn-icon-action {
+    background: transparent;
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+.btn-icon-action:hover { 
+    background: rgba(255,255,255,0.1); 
+    color: var(--text-white);
+    border-color: var(--text-white);
+}
+.btn-icon-action svg { width: 20px; height: 20px; }
+
+/* === BOTONES === */
+.action-row { text-align: right; }
+
+.btn-secondary {
+    background: transparent;
+    border: 1px solid var(--text-muted);
+    color: var(--text-muted);
+    padding: 0.6rem 1.2rem;
+    border-radius: 6px;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+}
+.btn-secondary:hover { 
+    border-color: var(--text-white); 
+    color: var(--text-white); 
+    box-shadow: 0 0 8px rgba(255,255,255,0.2);
+}
+
+.btn-primary, .btn-save {
+    background: var(--brand-red);
+    color: white;
+    border: 1px solid var(--brand-red);
+    padding: 0.8rem 1.5rem;
+    border-radius: 6px;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+}
+.btn-primary:hover, .btn-save:hover { 
+    background: var(--brand-red-dark); 
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.6);
+}
+
+.empty-state-text {
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+}
+
+/* === FORMULARIO === */
+.section-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border-medium), transparent);
+    margin: 2rem 0;
+}
+
+.form-title {
+    color: var(--text-white);
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.settings-input {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.5); 
+    border: 1px solid var(--border-medium);
+    color: var(--text-white);
+    padding: 1rem;
+    border-radius: 6px;
+    font-size: 1.1rem;
+    text-align: center;
+    letter-spacing: 3px;
+    margin-top: 0.5rem;
+}
+.settings-input:focus {
+    border-color: var(--brand-red);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+    outline: none;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 1.5rem;
+    gap: 1rem;
+}
+
+.btn-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+    border: none;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-weight: 700;
+    font-size: 0.8rem;
+}
+.btn-ghost:hover { color: var(--text-white); text-decoration: underline; }
+
+/* === MENSAJES === */
+.status-message {
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    text-align: center;
+}
+.status-message.success {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+    border: 1px solid #10b981;
+}
+.status-message.error {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ff8888;
+    border: 1px solid var(--brand-red);
+}
