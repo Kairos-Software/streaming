@@ -64,4 +64,5 @@ urlpatterns = [
     # --- EXTRAS ---
     path("audio/", views.audio, name="audio"),
     path("tutorial/", views.tutorial, name="tutorial"),
+    path("autorizar-program-switch/", views.autorizar_program_switch),
 ]

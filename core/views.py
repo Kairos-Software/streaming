@@ -29,7 +29,7 @@ from core.services.estado_transmision import (
     limpiar_conexiones_huerfanas
 )
 # Solo necesitamos stop para cuando Nginx avisa directamente
-from core.services.ffmpeg_manager import stop_program_stream 
+# from core.services.ffmpeg_manager import stop_program_stream 
 
 
 # ==============================================================================
@@ -211,11 +211,20 @@ def stream_finalizado(request):
         # Solo cerramos la cámara
         cerrar_camara_usuario(user, cam_index)
 
-        # Si ya no queda ninguna ON_AIR → apagamos todo
+        # Chequeo inmediato
         hay_on_air = StreamConnection.objects.filter(
             user=user,
             status=StreamConnection.Status.ON_AIR,
         ).exists()
+
+        if not hay_on_air:
+            # Debounce: esperar un instante por si hay un switch en curso
+            import time
+            time.sleep(0.5)  # 500 ms
+            hay_on_air = StreamConnection.objects.filter(
+                user=user,
+                status=StreamConnection.Status.ON_AIR,
+            ).exists()
 
         if not hay_on_air:
             detener_transmision_usuario(user)
@@ -334,6 +343,45 @@ def estado_camaras(request):
         }
 
     return JsonResponse({"ok": True, "cameras": data, "canal": canal})
+
+
+@csrf_exempt
+def autorizar_program_switch(request):
+    """
+    Autoriza o rechaza escritura en /program_switch.
+
+    SOLO se permite si el canal del usuario
+    está realmente EN VIVO.
+    """
+
+    if request.method != "POST":
+        return HttpResponse("Método no permitido", status=405)
+
+    # nginx-rtmp envía el nombre del stream acá
+    # name = nombre del stream (username)
+    stream_name = request.POST.get("name")
+
+    if not stream_name:
+        return HttpResponse("Stream inválido", status=403)
+
+    try:
+        user = User.objects.get(username=stream_name)
+    except User.DoesNotExist:
+        print(f"[RTMP] program_switch RECHAZADO: usuario {stream_name} no existe")
+        return HttpResponse("Usuario inexistente", status=403)
+
+    try:
+        canal = CanalTransmision.objects.get(usuario=user)
+    except CanalTransmision.DoesNotExist:
+        print(f"[RTMP] program_switch RECHAZADO: canal inexistente ({user.username})")
+        return HttpResponse("Canal inexistente", status=403)
+
+    if not canal.en_vivo:
+        print(f"[RTMP] program_switch BLOQUEADO: {user.username} no está EN VIVO")
+        return HttpResponse("Canal no en vivo", status=403)
+
+    print(f"[RTMP] program_switch AUTORIZADO para {user.username}")
+    return HttpResponse("OK", status=200)
 
 
 # ==============================================================================

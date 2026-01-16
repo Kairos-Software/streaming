@@ -1,15 +1,18 @@
 from django.utils import timezone
-from django.db import transaction
 from django.conf import settings
-from django.core.exceptions import ObjectDoesNotExist
 import os
 from core.models import StreamConnection, CanalTransmision
-from core.services.ffmpeg_manager import start_program_stream, stop_program_stream, is_program_stream_running
+from core.services.ffmpeg_manager import (
+    start_program_hls,
+    switch_program_camera,
+    stop_program_hls,
+)
 from core.services.notificaciones_tiempo_real import (
     notificar_actualizacion_camara,
     notificar_camara_eliminada,
     notificar_estado_canal,
 )
+from core.services.limpieza_hls import limpiar_hls_usuario
 
 
 # ===============================
@@ -17,142 +20,85 @@ from core.services.notificaciones_tiempo_real import (
 # ===============================
 def detener_transmision_usuario(user):
     """
-    Detiene completamente la transmisión del usuario.
-
-    REGLAS:
-    - Es la ÚNICA función que apaga FFmpeg
-    - Pasa todas las cámaras ON_AIR → READY
-    - Marca el canal como OFFLINE
+    FINAL REAL del evento.
+    Se llama SOLO cuando el usuario aprieta 'Detener transmisión'.
     """
 
-    # ===============================
-    # 1. BAJAR TODAS LAS CÁMARAS ON_AIR
-    # ===============================
-    camaras_on_air = StreamConnection.objects.filter(
+    print(f"[DEBUG] FINALIZANDO transmisión de {user.username}")
+
+    # 1️⃣ Detener FFmpeg (HLS + feeder)
+    stop_program_hls(user)
+
+    # 2️⃣ Limpiar HLS del usuario
+    limpiar_hls_usuario(user.username)
+
+    # 3️⃣ Bajar todas las cámaras a READY
+    camaras = StreamConnection.objects.filter(
         user=user,
-        status=StreamConnection.Status.ON_AIR,
+        status=StreamConnection.Status.ON_AIR
     )
 
-    indices = list(camaras_on_air.values_list("cam_index", flat=True))
+    indices = list(camaras.values_list("cam_index", flat=True))
+    camaras.update(
+        status=StreamConnection.Status.READY,
+        authorized=False
+    )
 
-    if not indices:
-        print(f"[DEBUG] detener_transmision_usuario: no hay cámaras ON_AIR para {user.username}")
-        return
+    for idx in indices:
+        notificar_actualizacion_camara(user, idx)
 
-    camaras_on_air.update(status=StreamConnection.Status.READY)
-
-    # ===============================
-    # 2. DETENER FFMPEG (PROGRAM)
-    # ===============================
-    print(f"[DEBUG] Deteniendo program stream de {user.username}")
-    stop_program_stream(user)
-
-    # ===============================
-    # 3. MARCAR CANAL COMO OFFLINE
-    # ===============================
+    # 4️⃣ Apagar canal
     canal, _ = CanalTransmision.objects.get_or_create(usuario=user)
     canal.en_vivo = False
     canal.inicio_transmision = None
     canal.url_hls = ""
     canal.save(update_fields=["en_vivo", "inicio_transmision", "url_hls"])
 
-    # ===============================
-    # 4. NOTIFICAR CÁMARAS AFECTADAS
-    # ===============================
-    for idx in indices:
-        notificar_actualizacion_camara(user, idx)
-
-    # ===============================
-    # 5. NOTIFICAR ESTADO DEL CANAL
-    # ===============================
+    # 5️⃣ Notificar frontend
     notificar_estado_canal(user)
 
+    print(f"[DEBUG] Transmisión FINALIZADA correctamente para {user.username}")
+    print(f"[DEBUG] Transmisión FINALIZADA correctamente para {user.username}")
 
-# ===============================
-# PONER UNA CÁMARA AL AIRE
-# ===============================
+
 def poner_camara_al_aire(user, cam_index):
-    """
-    Cambia la cámara activa (ON_AIR) del usuario.
-
-    REGLAS IMPORTANTES:
-    - Cambiar de cámara NO corta la transmisión
-    - FFmpeg solo se inicia si no está corriendo
-    - El canal está EN VIVO si hay una cámara ON_AIR
-    """
-
-    with transaction.atomic():
-
-        # ===============================
-        # 1. BAJAR CÁMARAS PREVIAS ON_AIR
-        # ===============================
-        camaras_previas = StreamConnection.objects.filter(
-            user=user,
-            status=StreamConnection.Status.ON_AIR,
-        )
-
-        indices_previos = list(
-            camaras_previas.values_list("cam_index", flat=True)
-        )
-
-        camaras_previas.update(status=StreamConnection.Status.READY)
-
-        # ===============================
-        # 2. BUSCAR CÁMARA A ACTIVAR
-        # ===============================
-        conn = StreamConnection.objects.filter(
+    try:
+        conn = StreamConnection.objects.get(
             user=user,
             cam_index=cam_index,
             status=StreamConnection.Status.READY,
-        ).first()
+            authorized=True,
+        )
+    except StreamConnection.DoesNotExist:
+        raise ValueError("La cámara no está lista para salir al aire")
 
-        if not conn:
-            raise ValueError(
-                f"Cámara {cam_index} no disponible o no autorizada para {user.username}"
-            )
+    # Marcar esta cámara como ON_AIR
+    StreamConnection.objects.filter(
+        user=user,
+        status=StreamConnection.Status.ON_AIR
+    ).update(status=StreamConnection.Status.READY)
 
-        # ===============================
-        # 3. MARCAR CÁMARA COMO ON_AIR
-        # ===============================
-        conn.status = StreamConnection.Status.ON_AIR
-        conn.save(update_fields=["status"])
+    conn.status = StreamConnection.Status.ON_AIR
+    conn.save()
 
-        # ===============================
-        # 4. NOTIFICAR CÁMARAS PREVIAS
-        # ===============================
-        for idx in indices_previos:
-            notificar_actualizacion_camara(user, idx)
-
-        # ===============================
-        # 5. NOTIFICAR CÁMARA ACTUAL
-        # ===============================
-        notificar_actualizacion_camara(user, cam_index)
-
-        # ===============================
-        # 6. INICIAR FFMPEG SOLO SI NO CORRE
-        # ===============================
-        if not is_program_stream_running(user):
-            start_program_stream(user=user, stream_key=conn.stream_key)
-
-        # ===============================
-        # 7. MARCAR CANAL COMO EN VIVO
-        # ===============================
-        canal, _ = CanalTransmision.objects.get_or_create(usuario=user)
-
+    # Crear / actualizar canal
+    canal, created = CanalTransmision.objects.get_or_create(
+        usuario=user,
+        defaults={
+            "en_vivo": True,
+            "inicio_transmision": timezone.now(),
+        }
+    )
+    if not canal.en_vivo:
         canal.en_vivo = True
         canal.inicio_transmision = timezone.now()
-        canal.url_hls = f"{settings.HLS_BASE_URL}/program/{user.username}.m3u8"
+        canal.save()
 
-        canal.save(update_fields=[
-            "en_vivo",
-            "inicio_transmision",
-            "url_hls",
-        ])
+    # 🔄 Primero feeder
+    switch_program_camera(user, conn.stream_key)
 
-        # ===============================
-        # 8. NOTIFICAR ESTADO DEL CANAL
-        # ===============================
-        notificar_estado_canal(user)
+    # 🔥 Después maestro
+    start_program_hls(user)
 
 
 # ===============================
@@ -161,9 +107,9 @@ def poner_camara_al_aire(user, cam_index):
 def cerrar_camara_usuario(user, cam_index):
     """
     Elimina una cámara específica.
-    Si estaba ON_AIR, apaga la transmisión.
+    No apaga la transmisión aquí: la detención global se decide
+    fuera (p.ej., en stream_finalizado) para evitar cortar durante un switch.
     """
-
     conn = StreamConnection.objects.filter(
         user=user,
         cam_index=cam_index,
@@ -172,14 +118,12 @@ def cerrar_camara_usuario(user, cam_index):
     if not conn:
         return
 
-    estaba_on_air = conn.status == StreamConnection.Status.ON_AIR
-
+    # estaba_on_air = conn.status == StreamConnection.Status.ON_AIR  # ← ya no se usa para apagar
     conn.delete()
     notificar_camara_eliminada(user, cam_index)
 
-    if estaba_on_air:
-        print(f"[DEBUG] Se cerró cámara ON_AIR → apagando transmisión")
-        detener_transmision_usuario(user)
+    # NO llamar a detener_transmision_usuario aquí.
+    # La detención global se evalúa en stream_finalizado con un chequeo de ON_AIR.
 
 
 # ===============================
@@ -216,21 +160,22 @@ def limpiar_conexiones_huerfanas(usuario=None, segundos_timeout=120):
 
 def reconciliar_estado_canal(user):
     """
-    Mantiene el estado del canal en función de las cámaras ON_AIR y el archivo HLS.
+    El canal SOLO se apaga si la transmisión fue finalizada explícitamente.
+    Los cambios de cámara NO afectan el estado del canal.
     """
-    hay_on_air = StreamConnection.objects.filter(
-        user=user,
-        status=StreamConnection.Status.ON_AIR,
-    ).exists()
 
     canal, _ = CanalTransmision.objects.get_or_create(usuario=user)
 
     ruta_m3u8 = os.path.join(
-        r"D:\nginx-rtmp\nginx-rtmp-win32-dev\temp\hls\program",
+        settings.HLS_PATH,
+        "program",
         f"{user.username}.m3u8"
     )
 
-    if hay_on_air and os.path.exists(ruta_m3u8):
+    # Si ffmpeg está activo y existe el HLS → canal en vivo
+    hls_existe = os.path.exists(ruta_m3u8)
+
+    if hls_existe:
         if not canal.en_vivo:
             canal.en_vivo = True
             canal.url_hls = f"{settings.HLS_BASE_URL}/program/{user.username}.m3u8"
@@ -240,9 +185,9 @@ def reconciliar_estado_canal(user):
     else:
         if canal.en_vivo:
             canal.en_vivo = False
-            canal.inicio_transmision = None
             canal.url_hls = ""
-            canal.save(update_fields=["en_vivo", "inicio_transmision", "url_hls"])
+            canal.inicio_transmision = None
+            canal.save(update_fields=["en_vivo", "url_hls", "inicio_transmision"])
             notificar_estado_canal(user)
 
 
@@ -255,5 +200,28 @@ def notificar_estado_inicial_usuario(user):
 
     for conn in conexiones:
         notificar_actualizacion_camara(user, conn.cam_index)
+
+    notificar_estado_canal(user)
+
+
+def iniciar_transmision_usuario(user):
+    """
+    INICIO REAL del evento.
+    Se llama UNA sola vez, cuando pasa la primera cámara a ON_AIR.
+    """
+
+    canal, _ = CanalTransmision.objects.get_or_create(usuario=user)
+
+    if canal.en_vivo:
+        return  # ya está en vivo, no reiniciar nada
+
+    print(f"[DEBUG] INICIANDO transmisión de {user.username}")
+
+    start_program_hls(user)
+
+    canal.en_vivo = True
+    canal.inicio_transmision = timezone.now()
+    canal.url_hls = f"{settings.HLS_BASE_URL}/program/{user.username}.m3u8"
+    canal.save(update_fields=["en_vivo", "inicio_transmision", "url_hls"])
 
     notificar_estado_canal(user)

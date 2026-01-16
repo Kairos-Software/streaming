@@ -1,70 +1,189 @@
+import os
 import subprocess
+import signal
 from django.conf import settings
+from core.services.limpieza_hls import limpiar_hls_usuario
 
-# Diccionario global de procesos FFmpeg: {user_id: proceso}
-FFMPEG_PROCESSES = {}
+# ============================================================
+# PROCESOS FFmpeg EN MEMORIA (1 por usuario)
+# ============================================================
+
+PROGRAM_HLS_PROCESSES = {}      # FFmpeg que genera HLS FINAL (NO se reinicia)
+PROGRAM_FEEDER_PROCESSES = {}   # FFmpeg feeder (se mata y recrea al switchear cámara)
 
 
-def is_program_stream_running(user):
+# ============================================================
+# HLS MAESTRO (UNO POR USUARIO)
+# ============================================================
+
+def start_program_hls(user):
     """
-    Retorna True si el proceso FFmpeg del usuario
-    está corriendo actualmente.
+    Inicia el FFmpeg MAESTRO que:
+    RTMP program_switch → HLS en /program
     """
-    proc = FFMPEG_PROCESSES.get(user.id)
-    return proc is not None and proc.poll() is None
+
+    if user.id in PROGRAM_HLS_PROCESSES:
+        proc = PROGRAM_HLS_PROCESSES[user.id]
+        if proc.poll() is None:
+            print(f"[DEBUG] HLS maestro ya activo para {user.username}")
+            return
+
+    FFMPEG_BIN = settings.FFMPEG_BIN_PATH
+    RTMP_HOST = settings.RTMP_SERVER_HOST_INTERNAL
+    RTMP_PORT = settings.RTMP_SERVER_PORT_INTERNAL
+    HLS_PATH = settings.HLS_PATH
+
+    program_dir = os.path.join(HLS_PATH, "program")
+    os.makedirs(program_dir, exist_ok=True)
+
+    playlist = os.path.join(program_dir, f"{user.username}.m3u8")
+    segments = os.path.join(program_dir, f"{user.username}_%05d.ts")
+
+    cmd = [
+        FFMPEG_BIN,
+        "-fflags", "+genpts",
+        "-use_wallclock_as_timestamps", "1",
+        "-i", f"rtmp://{RTMP_HOST}:{RTMP_PORT}/program_switch/{user.username}",
+
+        # Reencode video
+        "-c:v", "libx264",
+        "-preset", "veryfast",
+        "-tune", "zerolatency",
+        "-pix_fmt", "yuv420p",
+        "-r", "30",
+        "-g", "60",
+        "-keyint_min", "60",
+        "-sc_threshold", "0",
+
+        # Reencode audio
+        "-c:a", "aac",
+        "-b:a", "128k",
+        "-ar", "44100",
+        "-ac", "2",
+
+        # HLS FINAL
+        "-f", "hls",
+        "-hls_time", "2",
+        "-hls_list_size", "15",
+        "-hls_flags", "delete_segments+program_date_time",
+        "-hls_segment_filename", segments,
+        playlist,
+    ]
+
+    print(f"[DEBUG] Iniciando HLS maestro para {user.username}")
+    print("CMD HLS:", " ".join(cmd))
+
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.STDOUT,
+        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
+    )
+
+    PROGRAM_HLS_PROCESSES[user.id] = proc
 
 
-def stop_program_stream(user):
-    """Detiene el proceso FFmpeg del usuario si existe y limpia el diccionario."""
-    proc = FFMPEG_PROCESSES.get(user.id)
-    if proc and proc.poll() is None:
-        print(f"[DEBUG] Deteniendo FFMPEG para {user.username}")
-        proc.terminate()
+# ============================================================
+# FEEDER (SWITCH DE CÁMARA)
+# ============================================================
+
+def switch_program_camera(user, stream_key):
+    """
+    Cambia la cámara EN VIVO:
+    - Mata feeder anterior
+    - Inicia feeder nuevo
+    - El HLS maestro NO se corta
+    """
+
+    old = PROGRAM_FEEDER_PROCESSES.get(user.id)
+    if old and old.poll() is None:
+        print(f"[DEBUG] Deteniendo feeder anterior ({user.username})")
         try:
-            proc.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-    FFMPEG_PROCESSES.pop(user.id, None)
+            old.terminate()
+            old.wait(timeout=5)
+        except Exception:
+            old.kill()
 
+    PROGRAM_FEEDER_PROCESSES.pop(user.id, None)
 
-def start_program_stream(user, stream_key):
-    """
-    Inicia la retransmisión 'program' desde el RTMP interno.
-    Cada usuario mantiene su propio proceso FFmpeg.
-    """
     FFMPEG_BIN = settings.FFMPEG_BIN_PATH
     RTMP_HOST = settings.RTMP_SERVER_HOST_INTERNAL
     RTMP_PORT = settings.RTMP_SERVER_PORT_INTERNAL
 
-    # Si ya hay un proceso corriendo para este usuario, no lo reiniciamos
-    proc = FFMPEG_PROCESSES.get(user.id)
-    if proc and proc.poll() is None:
-        print(f"[DEBUG] FFMPEG ya corriendo para {user.username}")
-        return
-
     input_rtmp = f"rtmp://{RTMP_HOST}:{RTMP_PORT}/live/{stream_key}"
-    output_rtmp = f"rtmp://{RTMP_HOST}:{RTMP_PORT}/program/{user.username}"
+    output_rtmp = f"rtmp://{RTMP_HOST}:{RTMP_PORT}/program_switch/{user.username}"
 
-    cmd = [
+    feeder_cmd = [
         FFMPEG_BIN,
-        "-re",
+        "-fflags", "+genpts",
         "-i", input_rtmp,
-        "-c", "copy",
+
+        # Forzar reencode de video
+        "-c:v", "libx264",
+        "-preset", "ultrafast",
+        "-tune", "zerolatency",
+        "-pix_fmt", "yuv420p",
+        "-r", "30",
+        "-g", "60",
+        "-keyint_min", "60",
+        "-sc_threshold", "0",
+
+        # Reencode de audio
+        "-c:a", "aac",
+        "-b:a", "128k",
+        "-ar", "44100",
+        "-ac", "2",
+
+        # 🔒 Map explícito para incluir video + audio
+        "-map", "0:v:0",
+        "-map", "0:a:0",
+
         "-f", "flv",
         output_rtmp,
     ]
 
-    print(f"[DEBUG] Ejecutando FFMPEG para {user.username}")
-    print("CMD:", " ".join(cmd))
+    print(f"[DEBUG] Iniciando feeder → {stream_key}")
+    print("CMD FEEDER:", " ".join(feeder_cmd))
+
+    feeder_proc = subprocess.Popen(
+        feeder_cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.STDOUT,
+        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
+    )
+
+    PROGRAM_FEEDER_PROCESSES[user.id] = feeder_proc
+
+
+# ============================================================
+# FIN REAL DEL EVENTO
+# ============================================================
+
+def stop_program_hls(user):
+    ...
+    PROGRAM_FEEDER_PROCESSES.pop(user.id, None)
+    PROGRAM_HLS_PROCESSES.pop(user.id, None)
+
+    FFMPEG_BIN = settings.FFMPEG_BIN_PATH
+    RTMP_HOST = settings.RTMP_SERVER_HOST_INTERNAL
+    RTMP_PORT = settings.RTMP_SERVER_PORT_INTERNAL
+
+    reset_cmd = [
+        FFMPEG_BIN,
+        "-f", "lavfi",
+        "-i", "anullsrc",
+        "-t", "1",
+        "-f", "flv",
+        f"rtmp://{RTMP_HOST}:{RTMP_PORT}/program_switch/{user.username}",
+    ]
 
     try:
-        proc = subprocess.Popen(
-            cmd,
+        subprocess.Popen(
+            reset_cmd,
             stdout=subprocess.DEVNULL,
-            stderr=subprocess.STDOUT
+            stderr=subprocess.DEVNULL,
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
         )
+        print(f"[DEBUG] Canal program_switch reseteado para {user.username}")
     except Exception as e:
-        print(f"[ERROR] No se pudo iniciar FFMPEG para {user.username}: {e}")
-        return
-
-    FFMPEG_PROCESSES[user.id] = proc
+        print(f"[WARN] No se pudo resetear program_switch: {e}")
