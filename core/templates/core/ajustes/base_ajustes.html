@@ -234,6 +234,14 @@
             </a>
         </nav>
 
+        <a href="{% url 'ajustes_retransmision' %}" class="settings-nav-item {% if active_tab == 'retransmision' %}active{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10 15l5-3-5-3v6z"></path>
+                <rect x="3" y="5" width="18" height="14" rx="2" ry="2"></rect>
+            </svg>
+            Retransmisión
+        </a>
+
         <div class="settings-footer-link" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-subtle);">
             <a href="{% url 'home' %}" class="settings-nav-item" style="color: var(--brand-red);">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>

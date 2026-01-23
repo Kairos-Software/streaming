@@ -1,0 +1,62 @@
+{% extends 'core/ajustes/base_ajustes.html' %}
+{% load static %}
+
+{% block settings_content %}
+<link rel="stylesheet" href="{% static 'multistream/css/retransmision.css' %}">
+
+<div class="settings-card">
+    <h2>Retransmisión en Plataformas Externas</h2>
+    <p class="settings-desc">
+        Configurá tus cuentas de YouTube y Facebook para retransmitir automáticamente tu señal en vivo.
+    </p>
+
+    <!-- === PESTAÑAS SUPERIORES === -->
+    <div class="tab-header">
+        <button class="tab-btn active" onclick="mostrarTab('youtube')">YouTube</button>
+        <button class="tab-btn" onclick="mostrarTab('facebook')">Facebook</button>
+    </div>
+
+    <!-- === CONTENIDO YOUTUBE === -->
+    <div id="tab-youtube" class="tab-content active">
+        <h3>Cuenta YouTube</h3>
+        <form method="post">
+            {% csrf_token %}
+            {{ form_youtube.as_p }}
+            <button type="submit" class="btn-save">Guardar configuración YouTube</button>
+        </form>
+
+        {% if cuenta_youtube %}
+            <div class="section-divider"></div>
+            <p class="settings-desc">Datos actuales:</p>
+            <div class="form-group">
+                <label>URL de Ingestión</label>
+                <input type="text" value="{{ cuenta_youtube.url_ingestion }}" readonly>
+            </div>
+            <div class="form-group">
+                <label>Clave de Transmisión</label>
+                <input type="password" value="{{ cuenta_youtube.clave_transmision }}" readonly>
+            </div>
+        {% else %}
+            <div class="section-divider"></div>
+            <p class="settings-desc">No tenés configurada una cuenta YouTube. Usá el formulario de arriba para crearla.</p>
+        {% endif %}
+    </div>
+
+    <!-- === CONTENIDO FACEBOOK === -->
+    <div id="tab-facebook" class="tab-content">
+        <h3>Cuenta Facebook</h3>
+        <p class="settings-desc">Próximamente vas a poder configurar tu cuenta de Facebook aquí.</p>
+
+        <div class="form-group">
+            <label>URL de Ingestión (ejemplo)</label>
+            <input type="text" value="rtmp://live-api-s.facebook.com:80/rtmp/" readonly>
+        </div>
+        <div class="form-group">
+            <label>Clave de Transmisión (ejemplo)</label>
+            <input type="password" value="clave-facebook-ejemplo" readonly>
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'multistream/js/retransmision.js' %}"></script>
+{% endblock %}
