@@ -1,20 +1,24 @@
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect
-from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
-from django.contrib import messages
-from multistream.models import CuentaYouTube, EstadoRetransmision
-from multistream.forms import CuentaYouTubeForm
-from multistream.streaming import StreamingManager
-import logging
 import json
+import logging
+
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.shortcuts import render, redirect
+from django.views.decorators.http import require_http_methods
+
+from multistream.forms import CuentaYouTubeForm
+from multistream.models import CuentaYouTube, EstadoRetransmision
+from multistream.streaming import StreamingManager
 
 logger = logging.getLogger(__name__)
 
 
 @login_required
 def ajustes_retransmision(request):
-    """Vista para configurar cuentas de retransmisión"""
+    """
+    Configuración de cuentas de retransmisión (YouTube, futuro: FB, TikTok, etc)
+    """
     cuenta_youtube = CuentaYouTube.objects.filter(usuario=request.user).first()
 
     if request.method == "POST":
@@ -26,7 +30,7 @@ def ajustes_retransmision(request):
             messages.success(request, "✅ Configuración de YouTube guardada correctamente")
             return redirect("ajustes_retransmision")
         else:
-            messages.error(request, "❌ Error al guardar. Verifica los datos.")
+            messages.error(request, "❌ Error al guardar la configuración")
     else:
         form = CuentaYouTubeForm(instance=cuenta_youtube)
 
@@ -41,47 +45,49 @@ def ajustes_retransmision(request):
 @require_http_methods(["POST"])
 def iniciar_retransmision(request):
     """
-    API: Iniciar retransmisión en plataformas seleccionadas
-    POST: { "platforms": ["youtube", "facebook", ...] }
+    API
+    POST JSON:
+    {
+        "platforms": ["youtube", "facebook"]
+    }
     """
     try:
-        data = json.loads(request.body)
-        platforms = data.get('platforms', [])
-        
+        payload = json.loads(request.body)
+        platforms = payload.get("platforms", [])
+
         if not platforms:
             return JsonResponse({
-                'ok': False,
-                'error': 'No se seleccionaron plataformas'
+                "ok": False,
+                "error": "No se seleccionaron plataformas"
             }, status=400)
-        
+
         manager = StreamingManager(request.user)
         resultados = []
-        
+
         for platform in platforms:
             resultado = manager.iniciar_plataforma(platform)
             resultados.append({
-                'platform': platform,
-                'success': resultado['success'],
-                'message': resultado.get('message', '')
+                "platform": platform,
+                "success": resultado["success"],
+                "message": resultado.get("message", "")
             })
-        
-        alguna_exitosa = any(r['success'] for r in resultados)
-        
+
         return JsonResponse({
-            'ok': alguna_exitosa,
-            'resultados': resultados
+            "ok": any(r["success"] for r in resultados),
+            "resultados": resultados
         })
-        
+
     except json.JSONDecodeError:
         return JsonResponse({
-            'ok': False,
-            'error': 'Datos JSON inválidos'
+            "ok": False,
+            "error": "JSON inválido"
         }, status=400)
+
     except Exception as e:
-        logger.error(f"Error en iniciar_retransmision: {str(e)}")
+        logger.exception("Error iniciando retransmisión")
         return JsonResponse({
-            'ok': False,
-            'error': str(e)
+            "ok": False,
+            "error": str(e)
         }, status=500)
 
 
@@ -89,48 +95,59 @@ def iniciar_retransmision(request):
 @require_http_methods(["POST"])
 def detener_retransmision(request, platform):
     """
-    API: Detener retransmisión en una plataforma específica
-    POST: /api/restream/stop/<platform>/
+    API
+    POST /api/restream/stop/<platform>/
     """
     try:
         manager = StreamingManager(request.user)
         resultado = manager.detener_plataforma(platform)
-        
+
         return JsonResponse({
-            'ok': resultado['success'],
-            'message': resultado.get('message', ''),
-            'platform': platform
+            "ok": resultado["success"],
+            "platform": platform,
+            "message": resultado.get("message", "")
         })
-        
+
     except Exception as e:
-        logger.error(f"Error deteniendo {platform}: {str(e)}")
+        logger.exception(f"Error deteniendo {platform}")
         return JsonResponse({
-            'ok': False,
-            'error': str(e),
-            'platform': platform
+            "ok": False,
+            "platform": platform,
+            "error": str(e)
         }, status=500)
 
 
 @login_required
 def estado_retransmisiones(request):
     """
-    API: Obtener estado de retransmisiones activas
-    GET: /api/restream/status/
+    API
+    GET /api/restream/status/
     """
     try:
         estados = EstadoRetransmision.objects.filter(
-            usuario=request.user,
-            detenido_en__isnull=True
-        ).values('plataforma', 'estado', 'iniciado_en', 'mensaje_error')
-        
+            usuario=request.user
+        ).order_by("-iniciado_en")
+
+        data = []
+
+        for estado in estados:
+            data.append({
+                "plataforma": estado.plataforma,
+                "estado": estado.estado,
+                "en_vivo": estado.detenido_en is None,
+                "iniciado_en": estado.iniciado_en,
+                "detenido_en": estado.detenido_en,
+                "mensaje_error": estado.mensaje_error,
+            })
+
         return JsonResponse({
-            'ok': True,
-            'retransmisiones': list(estados)
+            "ok": True,
+            "retransmisiones": data
         })
-        
+
     except Exception as e:
-        logger.error(f"Error obteniendo estados: {str(e)}")
+        logger.exception("Error obteniendo estado de retransmisiones")
         return JsonResponse({
-            'ok': False,
-            'error': str(e)
+            "ok": False,
+            "error": str(e)
         }, status=500)
