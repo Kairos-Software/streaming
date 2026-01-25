@@ -584,3 +584,333 @@ svg { display: block; }
     .control-header-container { grid-template-columns: 1fr; height: auto; gap: 12px; padding: 12px 1rem; }
     .header-main-nav { display: none; } 
 }
+
+/* ===========================================================
+   MASTER FIX FINAL: CÁMARAS + CONTROLES + MODAL
+   (Incluye todo: Pending, Ready, Overlay y Modal Retransmisión)
+   =========================================================== */
+
+/* --- 1. CÁMARAS: CONTENEDOR & PENDING --- */
+.camera-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    background: #000;
+}
+
+.camera-card {
+    width: 100%;
+    height: 100%;
+    border: 1px solid var(--border-medium);
+    border-radius: inherit;
+    position: relative;
+}
+
+/* Pending (Solicitud) */
+.camera-card.pending .camera-preview {
+    background: radial-gradient(circle at center, #1e2029 0%, #000 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+}
+
+.pending-actions-wrapper {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+    box-sizing: border-box;
+}
+
+.accept-row {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+}
+
+.accept-row input[type="password"] {
+    flex: 1;
+    min-width: 0;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--border-medium);
+    color: var(--brand-red);
+    font-family: 'Rajdhani', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-align: center;
+    border-radius: 8px;
+    height: 42px;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.accept-row input:focus {
+    border-color: var(--status-ready);
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+.btn-accept-icon {
+    flex-shrink: 0;
+    width: 42px;
+    height: 42px;
+    background: var(--status-ready);
+    color: #000;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: none;
+    transition: transform 0.2s;
+}
+.btn-accept-icon:hover { transform: scale(1.05); }
+
+.btn-reject-full {
+    width: 100%;
+    height: 32px;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+.btn-reject-full:hover { background: #ef4444; color: white; }
+
+/* --- 2. CÁMARAS: READY & OVERLAY "AL AIRE" --- */
+.camera-card.ready {
+    border-color: rgba(16, 185, 129, 0.5);
+}
+
+/* Overlay Central */
+.ready-action-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(2px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    border-radius: inherit;
+}
+
+.camera-card.ready:hover .ready-action-overlay { opacity: 1; }
+
+.btn-overlay-live {
+    background: var(--brand-red);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 50px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 0 0 20px rgba(255, 62, 62, 0.4);
+    transform: scale(0.9);
+    transition: all 0.2s;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-overlay-live:hover { transform: scale(1.05); background: #ff2020; }
+
+/* --- 3. CONTROLES FLOTANTES (Mute/Close) --- */
+.camera-external-toolbar {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 60;
+    display: flex;
+    gap: 6px;
+    background: transparent !important;
+    padding: 0 !important;
+    width: auto !important;
+    pointer-events: auto;
+}
+
+.tool-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+}
+.tool-btn:hover { background: white; color: black; }
+.tool-btn.btn-close:hover { background: var(--brand-red); border-color: var(--brand-red); color: white; }
+
+.camera-number-badge {
+    top: auto !important;
+    bottom: 8px !important;
+    right: 8px !important;
+    background: rgba(0, 0, 0, 0.8) !important;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+/* --- 4. MODAL RETRANSMISIÓN (ESTILO CORREGIDO) --- */
+.restream-modal {
+    display: none; /* JS toggles flex */
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+}
+
+.restream-modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(4px);
+}
+
+.restream-modal-content {
+    position: relative;
+    background: #13151a;
+    border: 1px solid var(--border-medium);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+    border-radius: 20px;
+    padding: 0;
+    overflow: hidden;
+    max-width: 500px;
+    width: 95%;
+    animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes modalPop {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.modal-header {
+    background: #0d0e12;
+    padding: 20px;
+    border-bottom: 1px solid var(--border-medium);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: white;
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.platform-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.platform-option {
+    position: relative;
+    cursor: pointer;
+}
+
+.platform-option input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.platform-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.03);
+    border: 2px solid var(--border-medium);
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.2s ease;
+    height: 100px;
+}
+
+.platform-icon { font-size: 28px; opacity: 0.7; transition: all 0.2s; color: var(--text-secondary); }
+.platform-name { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+
+/* Selected States */
+.platform-option input:checked + .platform-card {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: white;
+    box-shadow: 0 0 15px rgba(255,255,255,0.05);
+}
+.platform-option input:checked + .platform-card .platform-name { color: white; }
+.platform-option input:checked + .platform-card .platform-icon { opacity: 1; transform: scale(1.1); color: white; }
+
+/* Brand Colors */
+.platform-option.youtube input:checked + .platform-card { border-color: #ff0000; background: rgba(255, 0, 0, 0.1); }
+.platform-option.youtube input:checked + .platform-card .platform-icon { color: #ff0000; }
+
+.platform-option.facebook input:checked + .platform-card { border-color: #1877f2; background: rgba(24, 119, 242, 0.1); }
+.platform-option.facebook input:checked + .platform-card .platform-icon { color: #1877f2; }
+
+.platform-option.twitch input:checked + .platform-card { border-color: #9146ff; background: rgba(145, 70, 255, 0.1); }
+.platform-option.twitch input:checked + .platform-card .platform-icon { color: #9146ff; }
+
+.platform-option.instagram input:checked + .platform-card { border-color: #e4405f; background: rgba(228, 64, 95, 0.1); }
+.platform-option.instagram input:checked + .platform-card .platform-icon { color: #e4405f; }
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.btn-modal-cancel {
+    flex: 1;
+    padding: 12px;
+    border-radius: 10px;
+    background: transparent;
+    border: 1px solid var(--border-medium);
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 13px;
+}
+.btn-modal-cancel:hover { border-color: var(--text-primary); color: white; background: rgba(255,255,255,0.05); }
+
+.btn-modal-start {
+    flex: 2;
+    padding: 12px;
+    border-radius: 10px;
+    background: var(--brand-red);
+    color: white;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 15px rgba(255, 62, 62, 0.3);
+}
+.btn-modal-start:hover { background: #ff2020; transform: translateY(-1px); }

@@ -356,28 +356,43 @@ class CameraStatePoller {
         this.ensurePendingActions(card);
         break;
 
-      case 'ready':
-        badge.className = 'camera-status-badge ready';
-        badge.textContent = 'LISTA';
-        bar.innerHTML = '';
-        bar.classList.add('hidden-bar');
-
-        if (!toolbar.querySelector('.btn-on-air-ext')) {
-          const btn = document.createElement('button');
-          btn.className = 'btn-action-external btn-on-air-ext';
-          btn.textContent = 'PONER AL AIRE';
-          btn.onclick = () => this.setOnAir(card.dataset.camera);
-          toolbar.prepend(btn);
-        }
-
-        this.ensureVideoElement(card);
-        const v = card.querySelector('video');
-        if (v) {
-          v.style.width = '100%';
-          v.style.height = '100%';
-          v.style.objectFit = 'cover';
-        }
-        break;
+        case 'ready':
+          badge.className = 'camera-status-badge ready';
+          badge.textContent = 'LISTA';
+          bar.innerHTML = '';
+          bar.classList.add('hidden-bar');
+          
+          // Muestra los botones flotantes (X y Mic)
+          toolbar.style.display = 'flex'; 
+  
+          this.ensureVideoElement(card);
+          const v = card.querySelector('video');
+          if (v) {
+            v.style.width = '100%';
+            v.style.height = '100%';
+            v.style.objectFit = 'cover';
+          }
+  
+          // Inyecta el botón "AL AIRE" central (Overlay)
+          const previewContainer = card.querySelector('.camera-preview');
+          if (!previewContainer.querySelector('.ready-action-overlay')) {
+              const overlay = document.createElement('div');
+              overlay.className = 'ready-action-overlay';
+              overlay.innerHTML = `
+                  <button class="btn-overlay-live">
+                      <span class="material-icons">sensors</span>
+                      AL AIRE
+                  </button>
+              `;
+              
+              overlay.querySelector('button').onclick = (e) => {
+                  e.stopPropagation();
+                  this.setOnAir(card.dataset.camera);
+              };
+  
+              previewContainer.appendChild(overlay);
+          }
+          break;
 
       case 'on_air':
         badge.className = 'camera-status-badge on-air';
@@ -531,17 +546,56 @@ class CameraStatePoller {
     bar.dataset.bound = '1';
 
     const index = card.dataset.camera;
-    bar.innerHTML = `
-      <form class="accept-form">
-        <input type="password" name="pin" placeholder="PIN" required>
-        <button type="submit">Aceptar</button>
-      </form>
-      <form class="reject-form">
-        <button type="submit">Rechazar</button>
-      </form>
+    const previewArea = card.querySelector('.camera-preview');
+    
+    // Limpiamos preview
+    previewArea.innerHTML = '';
+    
+    // Contenedor Flex Vertical Centrado
+    const container = document.createElement('div');
+    container.style.display = 'flex';
+    container.style.flexDirection = 'column';
+    container.style.alignItems = 'center';
+    container.style.justifyContent = 'center';
+    container.style.width = '100%';
+    container.style.height = '100%'; // Ocupa todo el alto
+    container.style.padding = '16px'; // Padding para que no toque bordes
+    
+    // Icono y Texto
+    const headerHtml = `
+        <div style="text-align:center; margin-bottom:12px;">
+            <div style="font-size: 28px; color: var(--status-pending); margin-bottom: 4px;">
+                <span class="material-icons">lock</span>
+            </div>
+            <div class="preview-empty" style="font-size:10px;">Solicitud</div>
+        </div>
     `;
 
-    bar.querySelector('.accept-form').onsubmit = e => {
+    // Wrapper de Acciones (Input + Botones)
+    const actionsWrapper = document.createElement('div');
+    actionsWrapper.className = 'pending-actions-wrapper';
+    
+    actionsWrapper.innerHTML = `
+      <form class="accept-row">
+        <input type="password" name="pin" placeholder="PIN" maxlength="6" autocomplete="off" required>
+        <button type="submit" class="btn-accept-icon" title="Autorizar">
+            <span class="material-icons">check</span>
+        </button>
+      </form>
+      <button type="button" class="btn-reject-full" title="Rechazar">
+        <span class="material-icons" style="font-size:14px;">close</span> Rechazar
+      </button>
+    `;
+
+    container.innerHTML = headerHtml;
+    container.appendChild(actionsWrapper);
+    previewArea.appendChild(container);
+
+    // Lógica JS (Submit / Click)
+    const form = actionsWrapper.querySelector('.accept-row');
+    const rejectBtn = actionsWrapper.querySelector('.btn-reject-full');
+
+    form.onsubmit = e => {
       e.preventDefault();
       fetch(`/autorizar-camara/${index}/`, {
         method: 'POST',
@@ -549,16 +603,18 @@ class CameraStatePoller {
           'X-CSRFToken': getCSRFToken(),
           'Content-Type': 'application/x-www-form-urlencoded'
         },
-        body: `pin=${encodeURIComponent(e.target.pin.value)}`
+        body: `pin=${encodeURIComponent(form.pin.value)}`
       });
     };
 
-    bar.querySelector('.reject-form').onsubmit = e => {
+    rejectBtn.onclick = e => {
       e.preventDefault();
-      fetch(`/rechazar-camara/${index}/`, {
-        method: 'POST',
-        headers: { 'X-CSRFToken': getCSRFToken() }
-      });
+      if(confirm('¿Rechazar conexión?')) {
+          fetch(`/rechazar-camara/${index}/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCSRFToken() }
+          });
+      }
     };
   }
 
