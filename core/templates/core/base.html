@@ -5,6 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}KAIRCAM - Streaming Video Platform{% endblock %}</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=Material+Icons&display=swap" rel="stylesheet">
+    
     <link rel="stylesheet" href="{% static 'core/css/base.css' %}">
     {% block extra_css %}{% endblock %}
     <meta name="csrf-token" content="{{ csrf_token }}">
@@ -15,36 +20,26 @@
       <div class="control-header-container">
 
         <div class="control-brand">
-            <img src="{% static 'core/images/logokair.png' %}" alt="Logo" style="height: 40px; width: auto; object-fit: contain; margin-right: 15px;" />
-          <div class="control-brand-info">
-            <h1 class="control-brand-name">KAIRCAM</h1>
-            <p class="control-brand-subtitle">Production Control</p>
-          </div>
+            <div class="logo-container">
+                <img src="{% static 'core/images/logokair.png' %}" alt="Logo" class="logo-img" />
+            </div>
+            <div class="control-brand-info">
+                <h1 class="control-brand-name">KAIRCAM</h1>
+                <p class="control-brand-subtitle">Streaming Control</p>
+            </div>
         </div>
 
         <nav class="header-main-nav">
           <a href="{% url 'home' %}" class="nav-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
-            <svg viewBox="0 0 24 24" class="nav-icon">
-              <path d="M15 10l-3.5 3.5L9 11" stroke="currentColor" stroke-width="2" fill="none"/>
-              <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" fill="none"/>
-              <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" fill="none"/>
-              <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" fill="none"/>
-              <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" fill="none"/>
-            </svg>
+            <span class="material-icons nav-icon">videocam</span>
             Cámaras
           </a>
           <a href="{% url 'audio' %}" class="nav-item {% if request.resolver_match.url_name == 'audio' %}active{% endif %}">
-            <svg viewBox="0 0 24 24" class="nav-icon">
-              <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" stroke="currentColor" stroke-width="2" fill="none"/>
-              <path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4M8 22h8" stroke="currentColor" stroke-width="2" fill="none"/>
-            </svg>
+            <span class="material-icons nav-icon">equalizer</span>
             Audio
           </a>
           <a href="{% url 'tutorial' %}" class="nav-item {% if request.resolver_match.url_name == 'tutorial' %}active{% endif %}">
-            <svg viewBox="0 0 24 24" class="nav-icon">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
-              <path d="M12 16v-4M12 8h.01" stroke="currentColor" stroke-width="2" fill="none"/>
-            </svg>
+            <span class="material-icons nav-icon">help_outline</span>
             Tutorial
           </a>
         </nav>
@@ -57,52 +52,38 @@
 
               <div class="user-info" id="userInfo">
                 <span class="user-name">{{ request.user.username }}</span>
-                <svg class="dropdown-icon" viewBox="0 0 24 24">
-                  <path d="M19 9l-7 7-7-7" fill="none" stroke="currentColor" stroke-width="2"/>
-                </svg>
+                <span class="material-icons dropdown-icon">expand_more</span>
               </div>
 
               <div class="user-menu" id="userMenu">
                 
                 {% if request.user.is_superuser %}
                   <button class="menu-item" onclick="location.href='{% url 'crear_usuario' %}'">
-                    <svg viewBox="0 0 24 24" class="menu-icon">
-                      <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" fill="none"/>
-                    </svg>
+                    <span class="material-icons menu-icon">person_add</span>
                     Agregar usuario
                   </button>
                   <button class="menu-item" onclick="location.href='{% url 'ver_usuarios' %}'">
-                    <svg viewBox="0 0 24 24" class="menu-icon">
-                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="2" fill="none"/>
-                    </svg>
+                    <span class="material-icons menu-icon">group</span>
                     Ver usuarios
                   </button>
                   <hr class="menu-divider">
                 {% endif %}
 
                 <button class="menu-item" onclick="location.href='{% url 'ajustes_perfil' %}'">
-                    <svg viewBox="0 0 24 24" class="menu-icon">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2" fill="none"/>
-                        <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2" fill="none"/>
-                    </svg>
+                    <span class="material-icons menu-icon">settings</span>
                     Configuración
                 </button>
 
                 <button class="menu-item pin-option" onclick="location.href='{% url 'gestionar_pin' %}'">
-                  <svg viewBox="0 0 24 24" class="menu-icon">
-                    <rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" stroke-width="2" fill="none"/>
-                  </svg>
-                  Gestionar PIN
+                    <span class="material-icons menu-icon">lock</span>
+                    Gestionar PIN
                 </button>
 
                 <hr class="menu-divider">
                 
                 <button class="menu-item logout-item" onclick="location.href='{% url 'logout' %}'">
-                  <svg viewBox="0 0 24 24" class="menu-icon">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="2" fill="none"/>
-                  </svg>
-                  Cerrar sesión
+                    <span class="material-icons menu-icon">logout</span>
+                    Cerrar sesión
                 </button>
               </div>
             </div>

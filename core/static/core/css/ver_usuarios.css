@@ -1,21 +1,23 @@
 /* ======================================================
-   LAYOUT & CONTAINER
+   VER USUARIOS - ESTILO DARK PREMIUM
 ====================================================== */
+
+/* Layout & Container */
 .users-page-container {
   padding: 2rem;
   width: 100%;
   max-width: 1600px;
-  margin: 0 auto;
+  margin: 70px auto 0; /* Offset header */
   min-height: calc(100vh - 70px);
 }
 
 .users-card {
-  background: rgba(10, 14, 26, 0.9);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--border-medium);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
-  padding: 2rem;
+  padding: 0; /* Padding 0 para que la tabla llegue a los bordes si se quiere, o con padding interno */
   box-shadow: var(--shadow-lg);
+  overflow: hidden; /* Para bordes redondeados */
   animation: fadeIn 0.4s ease-out;
 }
 
@@ -24,31 +26,28 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ======================================================
- HEADER
-====================================================== */
+/* Header */
 .card-header-row {
+  padding: 24px 32px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
   border-bottom: 1px solid var(--border-subtle);
-  padding-bottom: 1.5rem;
+  background: rgba(255, 255, 255, 0.01);
 }
 
 .page-title {
-  font-size: 1.8rem;
-  font-weight: 800;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
   margin: 0;
-  color: var(--text-white);
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  color: var(--text-primary);
 }
 
 .page-subtitle {
-  color: var(--text-muted);
-  font-size: 0.9rem;
-  margin-top: 0.5rem;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  margin-top: 4px;
 }
 
 .btn-back {
@@ -58,131 +57,178 @@
   color: var(--text-secondary);
   text-decoration: none;
   font-weight: 600;
-  text-transform: uppercase;
-  font-size: 0.85rem;
-  transition: color 0.2s;
+  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border-medium);
+  transition: all 0.2s;
 }
-.btn-back:hover { color: var(--text-white); }
-.btn-back svg { width: 18px; height: 18px; }
 
-/* ======================================================
- NEON TABLE
-====================================================== */
+.btn-back:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}
+.btn-back svg { width: 16px; height: 16px; }
+
+/* Tabla Premium */
 .table-responsive {
   overflow-x: auto;
-  border-radius: 8px;
+  width: 100%;
 }
 
 .neon-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.9rem;
+  font-size: 14px;
   color: var(--text-secondary);
 }
 
 .neon-table thead th {
   text-align: left;
-  padding: 1rem;
-  background: rgba(239, 68, 68, 0.05); /* Fondo rojo muy sutil */
-  border-bottom: 2px solid var(--brand-red);
-  color: var(--text-white);
+  padding: 16px 24px;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-medium);
+  color: var(--text-tertiary);
+  font-weight: 600;
   text-transform: uppercase;
-  font-size: 0.8rem;
-  letter-spacing: 1px;
-  white-space: nowrap;
+  font-size: 11px;
+  letter-spacing: 0.5px;
 }
 
 .neon-table tbody td {
-  padding: 1rem;
+  padding: 16px 24px;
   border-bottom: 1px solid var(--border-subtle);
   vertical-align: middle;
 }
 
+.neon-table tbody tr:last-child td { border-bottom: none; }
+
 .neon-table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-hover);
 }
 
+/* Fila de edición */
 .neon-table tbody tr.editing-row {
-  background: rgba(239, 68, 68, 0.05);
-  border-left: 2px solid var(--brand-red);
+  background: rgba(255, 62, 62, 0.03);
 }
 
-/* ======================================================
- ELEMENTOS DE TABLA
-====================================================== */
-.font-bold { font-weight: 700; color: var(--text-white); }
-.text-muted { color: var(--text-muted); }
-.text-sm { font-size: 0.8rem; }
+/* Elementos de Tabla */
+.font-bold { font-weight: 600; color: var(--text-primary); }
+.text-muted { color: var(--text-tertiary); font-size: 13px; }
+.text-sm { font-size: 12px; }
 .text-right { text-align: right; }
 
+/* Badges */
 .badge {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
-.badge.success { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
-.badge.danger { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
 
-/* Inputs dentro de la tabla */
+.badge.success {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.badge.danger {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--brand-red);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* Inputs en tabla */
 .table-input {
   width: 100%;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-primary);
   border: 1px solid var(--border-medium);
-  color: var(--text-white);
-  padding: 6px 10px;
-  border-radius: 4px;
-  font-size: 0.9rem;
+  color: var(--text-primary);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  transition: all 0.2s;
 }
+
 .table-input:focus {
   border-color: var(--brand-red);
   outline: none;
-  background: rgba(0,0,0,0.5);
+  box-shadow: 0 0 0 2px rgba(255, 62, 62, 0.1);
 }
 
-.split-inputs {
-  display: flex;
-  gap: 5px;
+.split-inputs { display: flex; gap: 8px; }
+
+/* Toggle Switch (Checkbox) */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
 }
 
-/* Acciones */
-.actions-cell {
-  text-align: right;
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-medium);
+  transition: .4s;
+  border-radius: 20px;
 }
 
-.action-buttons {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 2px;
+  bottom: 2px;
+  background-color: var(--text-tertiary);
+  transition: .4s;
+  border-radius: 50%;
 }
+
+input:checked + .slider {
+  background-color: rgba(16, 185, 129, 0.2);
+  border-color: #10b981;
+}
+
+input:checked + .slider:before {
+  transform: translateX(16px);
+  background-color: #10b981;
+}
+
+/* Botones de Acción */
+.actions-cell { text-align: right; }
+.action-buttons { display: flex; justify-content: flex-end; gap: 8px; }
 
 .btn-icon {
   width: 32px; height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  border: 1px solid var(--border-subtle);
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px;
+  border: 1px solid transparent;
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s;
 }
-.btn-icon svg { width: 16px; height: 16px; }
 
-.btn-icon:hover { border-color: var(--text-white); color: var(--text-white); }
-.btn-icon.edit:hover { border-color: #3b82f6; color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
-.btn-icon.delete:hover { border-color: #ef4444; color: #ef4444; background: rgba(239, 68, 68, 0.1); }
-.btn-icon.confirm { background: var(--brand-red); border-color: var(--brand-red); color: white; }
-.btn-icon.confirm:hover { background: var(--brand-red-dark); }
+.btn-icon:hover { background: var(--bg-hover); color: var(--text-primary); }
+.btn-icon.edit:hover { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+.btn-icon.delete:hover { background: rgba(239, 68, 68, 0.1); color: var(--brand-red); }
+.btn-icon.confirm { background: rgba(16, 185, 129, 0.1); color: #10b981; border-color: rgba(16, 185, 129, 0.2); }
+.btn-icon.confirm:hover { background: #10b981; color: white; }
 
-/* Empty State */
 .empty-state {
   text-align: center;
-  padding: 3rem;
-  color: var(--text-muted);
-  font-size: 1rem;
-  font-style: italic;
+  padding: 4rem;
+  color: var(--text-tertiary);
+  font-size: 14px;
 }
