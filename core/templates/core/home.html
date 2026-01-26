@@ -4,6 +4,11 @@
 {% block title %}Control Center - KAIRCAM{% endblock %}
 {% block body_class %}control-body{% endblock %}
 
+{% block extra_css %}
+<!-- Estilos específicos de Multistream -->
+<link rel="stylesheet" href="{% static 'multistream/css/multistream_panel.css' %}">
+{% endblock %}
+
 {% block content %}
 <main class="control-main">
   <div class="control-container-full">
@@ -154,19 +159,20 @@
   </div>
 </main>
 
+<!-- MODAL DE RETRANSMISIÓN -->
 <div id="restreamModal" class="restream-modal" style="display: none;">
   <div class="restream-modal-overlay"></div>
   
-  <div class="restream-modal-content" style="background: #13151a; border: 1px solid #333; border-radius: 16px; overflow: hidden; width: 90%; max-width: 500px;">
+  <div class="restream-modal-content">
       
-      <div class="modal-header" style="background: #0d0e12; padding: 20px; border-bottom: 1px solid #222; display: flex; justify-content: space-between; align-items: center;">
-          <h3 class="modal-title" style="color: white; margin: 0; font-family: 'Rajdhani', sans-serif;">Iniciar Retransmisión</h3>
+      <div class="modal-header">
+          <h3 class="modal-title">Iniciar Retransmisión</h3>
           <button id="btnCloseModal" style="background:none; border:none; color: #666; cursor: pointer; padding:0;">
             <svg viewBox="0 0 24 24" width="24" height="24"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           </button>
       </div>
 
-      <div class="modal-body" style="padding: 24px;">
+      <div class="modal-body">
           <p style="margin-bottom: 20px; color: #94a3b8; font-size: 13px;">Selecciona plataformas destino configuradas:</p>
           
           <div class="platform-grid">
@@ -194,8 +200,7 @@
                       <span class="platform-name">Facebook</span>
                   </div>
               </label>
-              {% else %}
-               {% endif %}
+              {% endif %}
 
           </div>
 
@@ -205,9 +210,9 @@
               <a href="{% url 'ajustes_retransmision' %}" class="btn-control" style="background: #3b82f6; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; font-size: 12px;">Ir a Configuración</a>
           </div>
           {% else %}
-          <div class="modal-actions" style="margin-top: 24px; display: flex; gap: 12px;">
-              <button id="btnCancelRestream" class="btn-modal-cancel" style="background: transparent; border: 1px solid #444; color: #fff; padding: 10px 20px; border-radius: 6px; cursor: pointer;">Cancelar</button>
-              <button id="btnStartRestream" class="btn-modal-start" style="background: #ef4444; border: none; color: white; padding: 10px 20px; border-radius: 6px; cursor: pointer; flex: 1; font-weight: bold;">EMITIR AHORA</button>
+          <div class="modal-actions">
+              <button id="btnCancelRestream" class="btn-modal-cancel">Cancelar</button>
+              <button id="btnStartRestream" class="btn-modal-start">EMITIR AHORA</button>
           </div>
           {% endif %}
 
@@ -217,5 +222,9 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- HOME.JS (existente - fundamental para el sistema) -->
 <script src="{% static 'core/js/home.js' %}"></script>
+
+<!-- MULTISTREAM_PANEL.JS (nuevo - separado para organización) -->
+<script src="{% static 'multistream/js/multistream_panel.js' %}"></script>
 {% endblock %}

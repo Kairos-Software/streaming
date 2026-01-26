@@ -19,7 +19,6 @@ class CameraStatePoller {
     this.currentPreviewUrl = null;
     this.hasActivePreview = false;
     this.allCameras = {};
-    this.activePlatforms = {};
     this.start();
   }
 
@@ -166,7 +165,6 @@ class CameraStatePoller {
     const empty = document.getElementById('previewEmpty');
     const liveBadge = document.getElementById('liveBadge');
     const streamStatus = document.getElementById('streamStatus');
-    const btnRestream = document.getElementById('btnRestream');
 
     if (!cam || !cam.hls_url) {
       this.destroyPreview();
@@ -175,8 +173,6 @@ class CameraStatePoller {
         liveBadge.innerHTML = `<span class="live-dot"></span><span>OFFLINE</span>`;
       }
       if (streamStatus) streamStatus.textContent = 'OFFLINE';
-      if (btnRestream) btnRestream.style.display = 'none';
-      this.updateRestreamStatus();
       return;
     }
 
@@ -186,7 +182,6 @@ class CameraStatePoller {
         liveBadge.innerHTML = `<span class="live-dot"></span><span>EN VIVO</span>`;
       }
       if (streamStatus) streamStatus.textContent = 'EN VIVO';
-      if (btnRestream) btnRestream.style.display = 'flex';
       if (video) {
         video.style.display = 'block';
         if (empty) empty.style.display = 'none';
@@ -211,7 +206,6 @@ class CameraStatePoller {
       liveBadge.innerHTML = `<span class="live-dot"></span><span>EN VIVO</span>`;
     }
     if (streamStatus) streamStatus.textContent = 'EN VIVO';
-    if (btnRestream) btnRestream.style.display = 'flex';
 
     const streamReady = await this.waitForStream(cam.hls_url);
     if (!streamReady) {
@@ -258,7 +252,6 @@ class CameraStatePoller {
   destroyPreview() {
     const video = document.getElementById('mainPreviewVideo');
     const empty = document.getElementById('previewEmpty');
-    const btnRestream = document.getElementById('btnRestream');
 
     if (this.previewHls) {
       this.previewHls.destroy();
@@ -274,11 +267,9 @@ class CameraStatePoller {
       video.style.objectFit = 'cover';
     }
     if (empty) empty.style.display = 'flex';
-    if (btnRestream) btnRestream.style.display = 'none';
 
     this.currentPreviewUrl = null;
     this.hasActivePreview = false;
-    this.updateRestreamStatus();
   }
 
   createCameraCard(index) {
@@ -356,43 +347,40 @@ class CameraStatePoller {
         this.ensurePendingActions(card);
         break;
 
-        case 'ready':
-          badge.className = 'camera-status-badge ready';
-          badge.textContent = 'LISTA';
-          bar.innerHTML = '';
-          bar.classList.add('hidden-bar');
+      case 'ready':
+        badge.className = 'camera-status-badge ready';
+        badge.textContent = 'LISTA';
+        bar.innerHTML = '';
+        bar.classList.add('hidden-bar');
+        toolbar.style.display = 'flex';
+
+        this.ensureVideoElement(card);
+        const v = card.querySelector('video');
+        if (v) {
+          v.style.width = '100%';
+          v.style.height = '100%';
+          v.style.objectFit = 'cover';
+        }
+
+        const previewContainer = card.querySelector('.camera-preview');
+        if (!previewContainer.querySelector('.ready-action-overlay')) {
+          const overlay = document.createElement('div');
+          overlay.className = 'ready-action-overlay';
+          overlay.innerHTML = `
+            <button class="btn-overlay-live">
+              <span class="material-icons">sensors</span>
+              AL AIRE
+            </button>
+          `;
           
-          // Muestra los botones flotantes (X y Mic)
-          toolbar.style.display = 'flex'; 
-  
-          this.ensureVideoElement(card);
-          const v = card.querySelector('video');
-          if (v) {
-            v.style.width = '100%';
-            v.style.height = '100%';
-            v.style.objectFit = 'cover';
-          }
-  
-          // Inyecta el botón "AL AIRE" central (Overlay)
-          const previewContainer = card.querySelector('.camera-preview');
-          if (!previewContainer.querySelector('.ready-action-overlay')) {
-              const overlay = document.createElement('div');
-              overlay.className = 'ready-action-overlay';
-              overlay.innerHTML = `
-                  <button class="btn-overlay-live">
-                      <span class="material-icons">sensors</span>
-                      AL AIRE
-                  </button>
-              `;
-              
-              overlay.querySelector('button').onclick = (e) => {
-                  e.stopPropagation();
-                  this.setOnAir(card.dataset.camera);
-              };
-  
-              previewContainer.appendChild(overlay);
-          }
-          break;
+          overlay.querySelector('button').onclick = (e) => {
+            e.stopPropagation();
+            this.setOnAir(card.dataset.camera);
+          };
+
+          previewContainer.appendChild(overlay);
+        }
+        break;
 
       case 'on_air':
         badge.className = 'camera-status-badge on-air';
@@ -548,30 +536,26 @@ class CameraStatePoller {
     const index = card.dataset.camera;
     const previewArea = card.querySelector('.camera-preview');
     
-    // Limpiamos preview
     previewArea.innerHTML = '';
     
-    // Contenedor Flex Vertical Centrado
     const container = document.createElement('div');
     container.style.display = 'flex';
     container.style.flexDirection = 'column';
     container.style.alignItems = 'center';
     container.style.justifyContent = 'center';
     container.style.width = '100%';
-    container.style.height = '100%'; // Ocupa todo el alto
-    container.style.padding = '16px'; // Padding para que no toque bordes
+    container.style.height = '100%';
+    container.style.padding = '16px';
     
-    // Icono y Texto
     const headerHtml = `
-        <div style="text-align:center; margin-bottom:12px;">
-            <div style="font-size: 28px; color: var(--status-pending); margin-bottom: 4px;">
-                <span class="material-icons">lock</span>
-            </div>
-            <div class="preview-empty" style="font-size:10px;">Solicitud</div>
+      <div style="text-align:center; margin-bottom:12px;">
+        <div style="font-size: 28px; color: var(--status-pending); margin-bottom: 4px;">
+          <span class="material-icons">lock</span>
         </div>
+        <div class="preview-empty" style="font-size:10px;">Solicitud</div>
+      </div>
     `;
 
-    // Wrapper de Acciones (Input + Botones)
     const actionsWrapper = document.createElement('div');
     actionsWrapper.className = 'pending-actions-wrapper';
     
@@ -579,7 +563,7 @@ class CameraStatePoller {
       <form class="accept-row">
         <input type="password" name="pin" placeholder="PIN" maxlength="6" autocomplete="off" required>
         <button type="submit" class="btn-accept-icon" title="Autorizar">
-            <span class="material-icons">check</span>
+          <span class="material-icons">check</span>
         </button>
       </form>
       <button type="button" class="btn-reject-full" title="Rechazar">
@@ -591,7 +575,6 @@ class CameraStatePoller {
     container.appendChild(actionsWrapper);
     previewArea.appendChild(container);
 
-    // Lógica JS (Submit / Click)
     const form = actionsWrapper.querySelector('.accept-row');
     const rejectBtn = actionsWrapper.querySelector('.btn-reject-full');
 
@@ -610,121 +593,12 @@ class CameraStatePoller {
     rejectBtn.onclick = e => {
       e.preventDefault();
       if(confirm('¿Rechazar conexión?')) {
-          fetch(`/rechazar-camara/${index}/`, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': getCSRFToken() }
-          });
+        fetch(`/rechazar-camara/${index}/`, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': getCSRFToken() }
+        });
       }
     };
-  }
-
-  // ===================================
-  // RESTREAM MANAGEMENT
-  // ===================================
-  addActivePlatform(platform) {
-    this.activePlatforms[platform] = {
-      status: 'streaming',
-      startedAt: Date.now()
-    };
-    this.updateRestreamStatus();
-  }
-
-  removePlatform(platform) {
-    delete this.activePlatforms[platform];
-    this.updateRestreamStatus();
-  }
-
-  updatePlatformStatus(platform, status) {
-    if (this.activePlatforms[platform]) {
-      this.activePlatforms[platform].status = status;
-      this.updateRestreamStatus();
-    }
-  }
-
-  updateRestreamStatus() {
-    const panel = document.getElementById('restreamStatusPanel');
-    const container = document.getElementById('restreamPlatformsActive');
-    
-    if (!panel || !container) return;
-
-    const activePlatformsList = Object.keys(this.activePlatforms);
-
-    if (activePlatformsList.length === 0) {
-      panel.style.display = 'none';
-      return;
-    }
-
-    panel.style.display = 'block';
-    container.innerHTML = '';
-
-    const platformIcons = {
-      youtube: { color: '#ff0000', name: 'YouTube' },
-      facebook: { color: '#1877f2', name: 'Facebook' },
-      twitch: { color: '#9146ff', name: 'Twitch' },
-      instagram: { color: '#e4405f', name: 'Instagram' }
-    };
-
-    activePlatformsList.forEach(platform => {
-      const data = this.activePlatforms[platform];
-      const config = platformIcons[platform] || { color: '#6b7280', name: platform };
-      
-      const badge = document.createElement('div');
-      badge.className = 'restream-platform-badge';
-      badge.dataset.platform = platform;
-      badge.dataset.status = data.status;
-
-      const statusIcon = data.status === 'streaming' 
-        ? `<span class="platform-status-dot streaming"></span>` 
-        : data.status === 'error'
-        ? `<span class="platform-status-dot error"></span>`
-        : `<span class="platform-status-dot"></span>`;
-
-      badge.innerHTML = `
-        ${statusIcon}
-        <span class="platform-badge-name">${config.name}</span>
-        <button class="platform-stop-btn" data-platform="${platform}" title="Detener ${config.name}">
-          <svg viewBox="0 0 24 24" width="14" height="14">
-            <rect x="6" y="6" width="12" height="12" rx="1" fill="currentColor"/>
-          </svg>
-        </button>
-      `;
-
-      container.appendChild(badge);
-
-      const stopBtn = badge.querySelector('.platform-stop-btn');
-      stopBtn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        if (confirm(`¿Detener retransmisión en ${config.name}?`)) {
-          await this.stopPlatformRestream(platform);
-        }
-      });
-    });
-  }
-
-  async stopPlatformRestream(platform) {
-    try {
-      const response = await fetch(`/multistream/api/restream/stop/${platform}/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': getCSRFToken()
-        }
-      });
-
-      const data = await response.json();
-
-      if (data.ok) {
-        console.log(`✅ ${platform} detenido`);
-        this.removePlatform(platform);
-      } else {
-        throw new Error(data.message || 'Error desconocido');
-      }
-
-    } catch (error) {
-      console.error(`Error deteniendo ${platform}:`, error);
-      alert(`Error al detener ${platform}: ${error.message}`);
-      this.updatePlatformStatus(platform, 'error');
-    }
   }
 }
 
@@ -757,7 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let newUrl = data.hls_url;
 
         if (data.estado === 'on_air' && currentCam.hls_url) {
-            newUrl = currentCam.hls_url;
+          newUrl = currentCam.hls_url;
         }
 
         window.cameraPoller.allCameras[data.cam_index] = {
@@ -812,131 +686,6 @@ document.addEventListener('DOMContentLoaded', () => {
       video.muted = false;
       video.volume = e.target.value;
       if (volValue) volValue.textContent = Math.round(e.target.value * 100) + '%';
-    });
-  }
-
-  // ===================================
-  // RETRANSMISIÓN - MODAL CONTROL
-  // ===================================
-  const restreamModal = document.getElementById('restreamModal');
-  const btnRestream = document.getElementById('btnRestream');
-  const btnCloseModal = document.getElementById('btnCloseModal');
-  const btnCancelRestream = document.getElementById('btnCancelRestream');
-  const btnStartRestream = document.getElementById('btnStartRestream');
-
-  if (btnRestream) {
-    btnRestream.addEventListener('click', () => {
-      if (restreamModal) {
-        restreamModal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-      }
-    });
-  }
-
-  const closeModal = () => {
-    if (restreamModal) {
-      restreamModal.style.display = 'none';
-      document.body.style.overflow = 'auto';
-    }
-  };
-
-  if (btnCloseModal) btnCloseModal.addEventListener('click', closeModal);
-  if (btnCancelRestream) btnCancelRestream.addEventListener('click', closeModal);
-
-  if (restreamModal) {
-    restreamModal.addEventListener('click', (e) => {
-      if (e.target.classList.contains('restream-modal-overlay') || e.target === restreamModal) {
-        closeModal();
-      }
-    });
-  }
-
-  if (btnStartRestream) {
-    btnStartRestream.addEventListener('click', async () => {
-      const selectedPlatforms = Array.from(
-        document.querySelectorAll('input[name="platform"]:checked')
-      ).map(input => input.value);
-
-      if (selectedPlatforms.length === 0) {
-        alert('Por favor selecciona al menos una plataforma');
-        return;
-      }
-
-      console.log('🚀 Iniciando retransmisión en:', selectedPlatforms);
-      
-      const csrfToken = getCSRFToken();
-      console.log('🔑 CSRF Token:', csrfToken ? 'OK' : '❌ NO ENCONTRADO');
-      
-      btnStartRestream.disabled = true;
-      const originalHTML = btnStartRestream.innerHTML;
-      btnStartRestream.innerHTML = '<span>Iniciando...</span>';
-
-      try {
-        console.log('📡 Enviando petición a:', '/multistream/api/restream/start/');
-        
-        const response = await fetch('/multistream/api/restream/start/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken
-          },
-          body: JSON.stringify({ platforms: selectedPlatforms })
-        });
-
-        console.log('📥 Status:', response.status);
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('❌ Error del servidor:', errorText);
-          throw new Error(`Error HTTP ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log('✅ Respuesta:', data);
-
-        console.log('📋 OK?', data.ok);
-        console.log('📋 Resultados completos:', data.resultados);
-        if (data.resultados && data.resultados.length > 0) {
-          data.resultados.forEach((r, i) => {
-            console.log(`   [${i}] Platform: ${r.platform}`);
-            console.log(`   [${i}] Success: ${r.success}`);
-            console.log(`   [${i}] Message: ${r.message}`);
-          });
-        }
-
-        if (data.ok) {
-          let exitosas = [];
-          let fallidas = [];
-
-          data.resultados.forEach(resultado => {
-            if (resultado.success) {
-              exitosas.push(resultado.platform);
-              window.cameraPoller.addActivePlatform(resultado.platform);
-            } else {
-              fallidas.push(`${resultado.platform}: ${resultado.message}`);
-            }
-          });
-
-          if (exitosas.length > 0) {
-            alert(`✅ Retransmisión iniciada en: ${exitosas.join(', ')}`);
-          }
-
-          if (fallidas.length > 0) {
-            alert(`⚠️ Errores:\n${fallidas.join('\n')}`);
-          }
-
-          closeModal();
-        } else {
-          throw new Error(data.error || 'Error desconocido');
-        }
-
-      } catch (error) {
-        console.error('💥 Error:', error);
-        alert(`❌ Error: ${error.message}\n\nRevisa la consola (F12)`);
-      } finally {
-        btnStartRestream.disabled = false;
-        btnStartRestream.innerHTML = originalHTML;
-      }
     });
   }
 });
