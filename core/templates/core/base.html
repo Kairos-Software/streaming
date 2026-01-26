@@ -97,6 +97,6 @@
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script src="{% static 'core/js/base.js' %}"></script>
     {% block extra_js %}{% endblock %}
-
+    {{ available_platforms|json_script:"data-plataformas-disponibles" }}
 </body>
 </html>

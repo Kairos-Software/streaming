@@ -14,6 +14,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.utils import timezone
 from core.services.estado_transmision import notificar_estado_inicial_usuario
+from multistream.models import CuentaYouTube
 # --- TERCEROS ---
 from django_otp.plugins.otp_totp.models import TOTPDevice
 
@@ -120,7 +121,23 @@ def logout_view(request):
 @login_required
 def home(request):
     notificar_estado_inicial_usuario(request.user)
-    return render(request, "core/home.html")
+    
+    # 1. Verificar cuenta de YouTube
+    youtube_config = CuentaYouTube.objects.filter(usuario=request.user).first()
+    has_youtube = youtube_config.activo if (youtube_config and youtube_config.clave_transmision) else False
+
+    # 2. Verificar cuenta de Facebook (Placeholder para el futuro)
+    # facebook_config = CuentaFacebook.objects.filter(usuario=request.user).first()
+    # has_facebook = facebook_config.activo if (facebook_config and facebook_config.clave_transmision) else False
+    has_facebook = False # Por ahora desactivado hasta que termines el modelo
+
+    context = {
+        "has_youtube": has_youtube,
+        "has_facebook": has_facebook,
+        # Agrega más aquí a medida que crezcas (Twitch, Instagram...)
+    }
+
+    return render(request, "core/home.html", context)
 
 
 @login_required
