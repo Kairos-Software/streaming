@@ -100,3 +100,34 @@ class EstadoRetransmision(models.Model):
 
     def __str__(self):
         return f"{self.usuario.username} - {self.plataforma} ({self.estado})"
+
+
+# ===========================================
+# AGREGAR AL FINAL DE models.py
+# ============================================
+
+
+class CuentaFacebook(CuentaSocialBase):
+    """
+    Cuenta de Facebook Live asociada a un usuario.
+    
+    Facebook Live soporta transmisión RTMP/RTMPS.
+    """
+
+    id_pagina = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="ID único de la página de Facebook"
+    )
+    nombre_pagina = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Nombre público de la página"
+    )
+
+    class Meta:
+        verbose_name = "Cuenta Facebook"
+        verbose_name_plural = "Cuentas Facebook"
+
+    def __str__(self):
+        return f"Facebook: {self.nombre_pagina or self.usuario.username}"

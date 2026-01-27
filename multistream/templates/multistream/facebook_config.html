@@ -3,33 +3,67 @@
         <div class="platform-icon">👥</div>
         <div class="platform-info">
             <h3>Facebook Live</h3>
-            <span class="platform-status status-coming-soon">En desarrollo</span>
+            <span class="platform-status status-active">Configurado</span>
         </div>
     </div>
 
-    <div class="form-section">
-        <h4>Configuración de Cuenta</h4>
-        <p class="section-hint">La integración con Facebook estará disponible próximamente.</p>
+    <form method="post" class="platform-form">
+        {% csrf_token %}
+        <input type="hidden" name="platform" value="facebook">
         
-        <div class="form-group">
-            <label>URL de Ingestión RTMP</label>
-            <input type="text" value="rtmp://live-api-s.facebook.com:80/rtmp/" readonly disabled>
+        <div class="form-section">
+            <h4>Configuración de Cuenta</h4>
+            {{ form_facebook.as_p }}
         </div>
 
-        <div class="form-group">
-            <label>Clave de Transmisión</label>
-            <input type="password" value="••••••••••••••••" readonly disabled>
+        <div class="form-actions">
+            <button type="submit" class="btn-save">
+                <span class="btn-icon">💾</span>
+                Guardar Configuración
+            </button>
         </div>
-    </div>
+    </form>
 
-    <div class="coming-soon-box">
-        <span class="coming-soon-icon">🚧</span>
-        <h4>Próximamente</h4>
-        <p>Estamos trabajando en la integración con Facebook Live.</p>
-        <ul class="feature-list">
-            <li>✓ Transmisión simultánea a tu página y perfil</li>
-            <li>✓ Configuración automática de Stream Key</li>
-            <li>✓ Gestión de múltiples cuentas</li>
-        </ul>
-    </div>
+    {% if cuenta_facebook %}
+        <div class="section-divider"></div>
+        
+        <div class="form-section">
+            <h4>Datos de Transmisión Actuales</h4>
+            <p class="section-hint">Utilizá estos datos en tu software de streaming (OBS, vMix, etc.)</p>
+            
+            <div class="form-group">
+                <label>URL de Ingestión (RTMPS)</label>
+                <div class="input-with-actions">
+                    <input type="text" id="facebook-url" value="{{ cuenta_facebook.url_ingestion }}" readonly>
+                    <div class="input-actions">
+                        <button type="button" class="btn-action" onclick="copiarTexto('facebook-url', this)">
+                            📋 Copiar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Clave de Transmisión (Stream Key)</label>
+                <div class="input-with-actions">
+                    <input type="password" id="facebook-key" value="{{ cuenta_facebook.clave_transmision }}" readonly>
+                    <div class="input-actions">
+                        <button type="button" class="btn-action" onclick="toggleClave('facebook-key', this)">
+                            👁️ Mostrar
+                        </button>
+                        <button type="button" class="btn-action" onclick="copiarTexto('facebook-key', this)">
+                            📋 Copiar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="section-divider"></div>
+        <div class="empty-state">
+            <span class="empty-icon">👥</span>
+            <p>No tenés configurada una cuenta de Facebook.</p>
+            <p class="empty-hint">Completá el formulario de arriba para empezar a transmitir en Facebook Live.</p>
+        </div>
+    {% endif %}
 </div>

@@ -12,8 +12,8 @@ from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.views.decorators.http import require_http_methods
 
-from multistream.forms import CuentaYouTubeForm
-from multistream.models import CuentaYouTube, EstadoRetransmision
+from multistream.forms import CuentaYouTubeForm, CuentaFacebookForm
+from multistream.models import CuentaYouTube, CuentaFacebook, EstadoRetransmision
 from multistream.services import StreamManager
 
 logger = logging.getLogger(__name__)
@@ -24,27 +24,49 @@ def ajustes_retransmision(request):
     """
     Página de configuración de cuentas de retransmisión.
     
-    Por ahora solo YouTube, en el futuro: Facebook, TikTok, Twitch, etc.
+    Soporta: YouTube, Facebook
+    Futuro: TikTok, Twitch, Kick, etc.
     """
+    # Obtener cuentas existentes
     cuenta_youtube = CuentaYouTube.objects.filter(usuario=request.user).first()
+    cuenta_facebook = CuentaFacebook.objects.filter(usuario=request.user).first()
 
     if request.method == "POST":
-        form = CuentaYouTubeForm(request.POST, instance=cuenta_youtube)
-        if form.is_valid():
-            cuenta = form.save(commit=False)
-            cuenta.usuario = request.user
-            cuenta.save()
-            messages.success(request, "✅ Configuración de YouTube guardada correctamente")
-            return redirect("ajustes_retransmision")
-        else:
-            messages.error(request, "❌ Error al guardar la configuración")
-    else:
-        form = CuentaYouTubeForm(instance=cuenta_youtube)
+        # Determinar qué formulario se envió
+        platform = request.POST.get('platform')
+        
+        if platform == 'youtube':
+            form = CuentaYouTubeForm(request.POST, instance=cuenta_youtube)
+            if form.is_valid():
+                cuenta = form.save(commit=False)
+                cuenta.usuario = request.user
+                cuenta.save()
+                messages.success(request, "✅ Configuración de YouTube guardada correctamente")
+                return redirect("ajustes_retransmision")
+            else:
+                messages.error(request, "❌ Error al guardar la configuración de YouTube")
+        
+        elif platform == 'facebook':
+            form = CuentaFacebookForm(request.POST, instance=cuenta_facebook)
+            if form.is_valid():
+                cuenta = form.save(commit=False)
+                cuenta.usuario = request.user
+                cuenta.save()
+                messages.success(request, "✅ Configuración de Facebook guardada correctamente")
+                return redirect("ajustes_retransmision")
+            else:
+                messages.error(request, "❌ Error al guardar la configuración de Facebook")
+    
+    # GET request - mostrar formularios
+    form_youtube = CuentaYouTubeForm(instance=cuenta_youtube)
+    form_facebook = CuentaFacebookForm(instance=cuenta_facebook)
 
     return render(request, "multistream/retransmision.html", {
         "active_tab": "retransmision",
-        "form_youtube": form,
+        "form_youtube": form_youtube,
+        "form_facebook": form_facebook,
         "cuenta_youtube": cuenta_youtube,
+        "cuenta_facebook": cuenta_facebook,
     })
 
 

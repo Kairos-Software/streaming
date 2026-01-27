@@ -15,6 +15,7 @@ from django.conf import settings
 from multistream.models import EstadoRetransmision
 from core.models import CanalTransmision
 from .youtube_streamer import YouTubeStreamer
+from .facebook_streamer import FacebookStreamer
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +35,9 @@ class StreamManager:
     # Registro de streamers disponibles
     AVAILABLE_STREAMERS = {
         'youtube': YouTubeStreamer,
-        # Futuro: 'facebook': FacebookStreamer,
+        'facebook': FacebookStreamer,
         # Futuro: 'twitch': TwitchStreamer,
+        # Futuro: 'kick': KickStreamer,
     }
     
     @classmethod
