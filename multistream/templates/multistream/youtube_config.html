@@ -1,0 +1,68 @@
+<div class="platform-config" data-platform="youtube">
+    <div class="platform-header">
+        <div class="platform-icon">▶️</div>
+        <div class="platform-info">
+            <h3>YouTube</h3>
+            <span class="platform-status status-active">Configurado</span>
+        </div>
+    </div>
+
+    <form method="post" class="platform-form">
+        {% csrf_token %}
+        
+        <div class="form-section">
+            <h4>Configuración de Cuenta</h4>
+            {{ form_youtube.as_p }}
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-save">
+                <span class="btn-icon">💾</span>
+                Guardar Configuración
+            </button>
+        </div>
+    </form>
+
+    {% if cuenta_youtube %}
+        <div class="section-divider"></div>
+        
+        <div class="form-section">
+            <h4>Datos de Transmisión Actuales</h4>
+            <p class="section-hint">Utilizá estos datos en tu software de streaming (OBS, vMix, etc.)</p>
+            
+            <div class="form-group">
+                <label>URL de Ingestión (RTMP)</label>
+                <div class="input-with-actions">
+                    <input type="text" id="youtube-url" value="{{ cuenta_youtube.url_ingestion }}" readonly>
+                    <div class="input-actions">
+                        <button type="button" class="btn-action" onclick="copiarTexto('youtube-url', this)">
+                            📋 Copiar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Clave de Transmisión (Stream Key)</label>
+                <div class="input-with-actions">
+                    <input type="password" id="youtube-key" value="{{ cuenta_youtube.clave_transmision }}" readonly>
+                    <div class="input-actions">
+                        <button type="button" class="btn-action" onclick="toggleClave('youtube-key', this)">
+                            👁️ Mostrar
+                        </button>
+                        <button type="button" class="btn-action" onclick="copiarTexto('youtube-key', this)">
+                            📋 Copiar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="section-divider"></div>
+        <div class="empty-state">
+            <span class="empty-icon">📺</span>
+            <p>No tenés configurada una cuenta de YouTube.</p>
+            <p class="empty-hint">Completá el formulario de arriba para empezar a transmitir.</p>
+        </div>
+    {% endif %}
+</div>
