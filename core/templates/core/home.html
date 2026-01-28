@@ -176,33 +176,35 @@
           <p style="margin-bottom: 20px; color: #94a3b8; font-size: 13px;">Selecciona plataformas destino configuradas:</p>
           
           <div class="platform-grid">
-              
-              {% if has_youtube %}
-              <label class="platform-option youtube">
-                  <input type="checkbox" name="platform" value="youtube">
-                  <div class="platform-card">
-                      <span class="platform-icon" style="color:red">▶</span> 
-                      <span class="platform-name">YouTube</span>
-                  </div>
-              </label>
-              {% else %}
-              <div class="platform-option disabled" style="opacity: 0.5; cursor: not-allowed; border: 1px dashed #444; padding: 10px; border-radius: 8px; color: #666;">
-                  <span>YouTube (No configurado)</span>
-                  <a href="{% url 'ajustes_retransmision' %}" style="font-size: 10px; color: #3b82f6; text-decoration: none; display: block;">Configurar ahora</a>
-              </div>
-              {% endif %}
-
-              {% if has_facebook %}
-              <label class="platform-option facebook">
-                  <input type="checkbox" name="platform" value="facebook">
-                  <div class="platform-card">
-                      <span class="platform-icon" style="color:#1877f2">f</span>
-                      <span class="platform-name">Facebook</span>
-                  </div>
-              </label>
-              {% endif %}
-
-          </div>
+    
+            {% if has_youtube %}
+            <label class="platform-option youtube">
+                <input type="checkbox" name="platform" value="youtube">
+                <div class="platform-card">
+                    <span class="material-icons platform-icon" style="color:#ff0000;">smart_display</span> 
+                    <span class="platform-name">YouTube</span>
+                </div>
+            </label>
+            {% endif %}
+        
+            {% if has_facebook %}
+            <label class="platform-option facebook">
+                <input type="checkbox" name="platform" value="facebook">
+                <div class="platform-card">
+                    <span class="material-icons platform-icon" style="color:#1877f2;">facebook</span>
+                    <span class="platform-name">Facebook</span>
+                </div>
+            </label>
+            {% else %}
+            <div class="platform-option disabled" style="opacity:0.5; filter:grayscale(1);">
+                 <div class="platform-card">
+                    <span class="material-icons platform-icon">facebook</span>
+                    <span class="platform-name">No Configurado</span>
+                </div>
+            </div>
+            {% endif %}
+        
+        </div>
 
           {% if not has_youtube and not has_facebook %}
           <div style="text-align: center; padding: 20px; background: #1e2128; border-radius: 8px; margin-top: 10px;">

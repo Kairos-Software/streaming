@@ -14,7 +14,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.utils import timezone
 from core.services.estado_transmision import notificar_estado_inicial_usuario
-from multistream.models import CuentaYouTube
+from multistream.models import CuentaYouTube, CuentaFacebook
 # --- TERCEROS ---
 from django_otp.plugins.otp_totp.models import TOTPDevice
 
@@ -127,9 +127,9 @@ def home(request):
     has_youtube = youtube_config.activo if (youtube_config and youtube_config.clave_transmision) else False
 
     # 2. Verificar cuenta de Facebook (Placeholder para el futuro)
-    # facebook_config = CuentaFacebook.objects.filter(usuario=request.user).first()
-    # has_facebook = facebook_config.activo if (facebook_config and facebook_config.clave_transmision) else False
-    has_facebook = False # Por ahora desactivado hasta que termines el modelo
+    fb_account = CuentaFacebook.objects.filter(usuario=request.user).first()
+    # Verificamos que exista, tenga clave y esté activo
+    has_facebook = fb_account.activo if (fb_account and fb_account.clave_transmision) else False
 
     context = {
         "has_youtube": has_youtube,
