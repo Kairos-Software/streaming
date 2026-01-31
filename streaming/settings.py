@@ -181,29 +181,84 @@ RTMP_SERVER_HOST_INTERNAL = os.getenv("RTMP_SERVER_HOST_INTERNAL", "127.0.0.1")
 RTMP_SERVER_PORT_INTERNAL = int(os.getenv("RTMP_SERVER_PORT_INTERNAL", "9000"))
 
 # ======================================================
-# LOGGING
+# LOGGING - ⚡ VERSIÓN CORREGIDA ⚡
 # ======================================================
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    
+    # ==========================================
+    # FORMATTERS - Cómo se ven los logs
+    # ==========================================
+    "formatters": {
+        "verbose": {
+            "format": "[{levelname}] {asctime} {module}.{funcName} - {message}",
+            "style": "{",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+        "simple": {
+            "format": "[{levelname}] {message}",
+            "style": "{",
+        },
+    },
+    
+    # ==========================================
+    # HANDLERS - Dónde van los logs
+    # ==========================================
     "handlers": {
+        # Handler para consola (lo que ves en el terminal)
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+            "level": "INFO",
+        },
+        
+        # Handler para archivo (opcional - para debugging)
         "file": {
             "level": "DEBUG",
             "class": "logging.FileHandler",
             "filename": BASE_DIR / "django.log",
+            "formatter": "verbose",
         },
     },
+    
+    # ==========================================
+    # LOGGERS - Qué se loguea
+    # ==========================================
     "loggers": {
-        "django": {
-            "handlers": ["file"],
-            "level": "DEBUG",
-            "propagate": True,
+        # ⭐ Logger para MULTISTREAM (esto es lo que faltaba!)
+        "multistream": {
+            "handlers": ["console", "file"],  # Consola Y archivo
+            "level": "INFO",  # Cambiar a DEBUG si necesitas más detalle
+            "propagate": False,
         },
+        
+        # Logger para CORE (tu otra app)
+        "core": {
+            "handlers": ["console", "file"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        
+        # Logger para Django general
+        "django": {
+            "handlers": ["console", "file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+    
+    # ==========================================
+    # ROOT - Logger por defecto
+    # ==========================================
+    "root": {
+        "handlers": ["console"],
+        "level": "WARNING",
     },
 }
 
 # ======================================================
-# DEBUG VISUAL DE ENTORNO (BORRAR CUANDO ANDE)
+# DEBUG VISUAL DE ENTORNO
 # ======================================================
 print("=== DJANGO ENV ===")
 print("ENV:", ENV)

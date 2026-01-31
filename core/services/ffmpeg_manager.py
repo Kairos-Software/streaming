@@ -187,3 +187,5 @@ def stop_program_hls(user):
         print(f"[DEBUG] Canal program_switch reseteado para {user.username}")
     except Exception as e:
         print(f"[WARN] No se pudo resetear program_switch: {e}")
+
+

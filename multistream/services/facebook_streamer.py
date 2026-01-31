@@ -1,6 +1,6 @@
 """
-FACEBOOK STREAMER
-Gestiona la retransmisión específica a Facebook Live.
+FACEBOOK STREAMER - VERSION CON ASPECT RATIO CORRECTO
+Preserva la orientación original (horizontal o vertical)
 """
 
 import logging
@@ -12,135 +12,157 @@ logger = logging.getLogger(__name__)
 
 
 class FacebookStreamer(BaseStreamer):
-    """
-    Implementación específica para retransmisión a Facebook Live.
-    
-    Requisitos de Facebook:
-    - Codec de video: H.264
-    - Codec de audio: AAC
-    - Formato: FLV
-    - Protocolo: RTMP/RTMPS (puerto 443 para RTMPS)
-    """
     
     PLATFORM_NAME = 'facebook'
     
-    def get_rtmp_destination_url(self):
-        """
-        Construye la URL RTMP/RTMPS de Facebook.
-        
-        Formato: {url_ingestion}/{clave_transmision}
-        Ejemplo: rtmps://live-api-s.facebook.com:443/rtmp/xxxx-xxxx-xxxx-xxxx
-        
-        Returns:
-            str: URL RTMP/RTMPS completa de Facebook
-        
-        Raises:
-            ValueError: Si no hay cuenta de Facebook configurada
-        """
-        try:
-            cuenta = CuentaFacebook.objects.get(
-                usuario=self.user,
-                activo=True
-            )
-            
-            if not cuenta.clave_transmision:
-                raise ValueError("La cuenta de Facebook no tiene clave de transmisión configurada")
-            
-            if not cuenta.url_ingestion:
-                raise ValueError("La cuenta de Facebook no tiene URL de ingestión configurada")
-            
-            # Construir URL final
-            url_base = cuenta.url_ingestion.rstrip('/')
-            url_completa = f"{url_base}/{cuenta.clave_transmision}"
-            
-            logger.info(f"🔗 URL destino Facebook: {url_base}/****")
-            
-            return url_completa
-            
-        except CuentaFacebook.DoesNotExist:
-            raise ValueError(f"No existe cuenta de Facebook para el usuario {self.user.username}")
-    
     def validate_account_credentials(self):
-        """
-        Valida que el usuario tenga una cuenta de Facebook activa y configurada.
+        logger.info("=" * 80)
+        logger.info("[FACEBOOK] Validando credenciales")
+        logger.info("=" * 80)
         
-        Raises:
-            ValueError: Si no hay cuenta o está mal configurada
-        """
         try:
-            cuenta = CuentaFacebook.objects.get(
-                usuario=self.user,
-                activo=True
-            )
+            cuenta = CuentaFacebook.objects.get(usuario=self.user, activo=True)
             
             if not cuenta.clave_transmision:
-                raise ValueError("Falta configurar la clave de transmisión de Facebook")
-            
+                raise ValueError("Falta clave de transmisión de Facebook")
             if not cuenta.url_ingestion:
-                raise ValueError("Falta configurar la URL de ingestión de Facebook")
+                raise ValueError("Falta URL de ingestión de Facebook")
             
-            logger.info(f"✅ Credenciales de Facebook válidas para {self.user.username}")
+            logger.info(f"[OK] Usuario: {self.user.username}")
+            logger.info(f"  - Clave: {cuenta.clave_transmision[:10]}...{cuenta.clave_transmision[-4:]}")
+            logger.info(f"  - URL: {cuenta.url_ingestion}")
+            logger.info("=" * 80)
             
         except CuentaFacebook.DoesNotExist:
-            raise ValueError(
-                f"No existe cuenta de Facebook activa para {self.user.username}. "
-                f"Configure sus credenciales en Ajustes > Retransmisión."
-            )
+            raise ValueError(f"No existe cuenta de Facebook para {self.user.username}")
+    
+    def get_rtmp_destination_url(self):
+        logger.info("[FACEBOOK] Construyendo URL")
+        logger.info("-" * 80)
+        
+        cuenta = CuentaFacebook.objects.get(usuario=self.user, activo=True)
+        url_base = cuenta.url_ingestion.rstrip('/')
+        
+        logger.info(f"[CONFIG] URL original: {url_base}")
+        
+        # Asegurar RTMPS
+        if url_base.startswith('rtmp://'):
+            url_base = url_base.replace('rtmp://', 'rtmps://')
+            if ':443' not in url_base and 'facebook.com' in url_base:
+                url_base = url_base.replace('facebook.com', 'facebook.com:443')
+            logger.info(f"[FIX] Convertido a RTMPS: {url_base}")
+        
+        elif url_base.startswith('rtmps://'):
+            if ':443' not in url_base and 'facebook.com' in url_base:
+                url_base = url_base.replace('facebook.com', 'facebook.com:443')
+                logger.info(f"[FIX] Puerto 443 agregado")
+            logger.info("[OK] Ya usa RTMPS")
+        
+        else:
+            url_base = f"rtmps://{url_base}"
+            if ':443' not in url_base and 'facebook.com' in url_base:
+                url_base = url_base.replace('facebook.com', 'facebook.com:443')
+        
+        # Asegurar /rtmp
+        if '/rtmp' not in url_base:
+            url_base = f"{url_base}/rtmp"
+        
+        url_completa = f"{url_base}/{cuenta.clave_transmision}"
+        
+        key_preview = f"{cuenta.clave_transmision[:8]}...{cuenta.clave_transmision[-4:]}"
+        logger.info(f"[DESTINO] {url_base}/{key_preview}")
+        logger.info(f"[PROTOCOLO] RTMPS:443")
+        logger.info("-" * 80)
+        
+        return url_completa
     
     def build_ffmpeg_command(self, destination_url):
         """
-        Construye el comando FFmpeg optimizado para Facebook Live.
+        Comando optimizado que PRESERVA aspect ratio original.
         
-        Lee RTMP interno (program_switch) y lo reenvía a Facebook.
-        
-        Nota: Facebook Live puede usar RTMPS (puerto 443) para mejor compatibilidad
-        con firewalls corporativos.
-        
-        Args:
-            destination_url (str): URL RTMP/RTMPS de Facebook
-        
-        Returns:
-            list: Comando FFmpeg completo
+        CRITICO: No fuerza resolución, respeta la del source
         """
-        ffmpeg_path = settings.FFMPEG_BIN_PATH
+        logger.info("[FFMPEG] Construyendo comando")
+        logger.info("-" * 80)
         
-        # Construir URL RTMP interna (program_switch)
+        ffmpeg_path = settings.FFMPEG_BIN_PATH
         rtmp_host = getattr(settings, 'RTMP_SERVER_HOST_INTERNAL', '127.0.0.1')
         rtmp_port = getattr(settings, 'RTMP_SERVER_PORT_INTERNAL', '9000')
-        
-        # El stream en program_switch se llama igual que el username
         rtmp_source = f"rtmp://{rtmp_host}:{rtmp_port}/program_switch/{self.user.username}"
         
-        logger.info(f"📡 RTMP fuente: {rtmp_source}")
-        logger.info(f"📡 RTMP destino: {destination_url[:50]}...****")
+        logger.info(f"[SOURCE] {rtmp_source}")
+        logger.info(f"[DEST] {destination_url[:60]}...****")
         
+        # ==========================================
+        # COMANDO OPTIMIZADO
+        # ==========================================
         command = [
             ffmpeg_path,
             
-            # ==========================================
-            # INPUT (RTMP program_switch)
-            # ==========================================
+            # INPUT
             '-i', rtmp_source,
             
             # ==========================================
-            # VIDEO - Copy sin recodificar (más eficiente)
+            # VIDEO - Recodificar SIN cambiar resolución
             # ==========================================
-            '-c:v', 'copy',
+            '-c:v', 'libx264',
+            
+            # PRESET
+            '-preset', 'veryfast',
+            
+            # TUNE
+            '-tune', 'zerolatency',
+            
+            # PIXEL FORMAT
+            '-pix_fmt', 'yuv420p',
+            
+            # BITRATE - MAS ALTO para horizontal
+            '-b:v', '4000k',
+            '-maxrate', '4000k',
+            '-bufsize', '8000k',
+            
+            # KEYFRAME INTERVAL
+            '-g', '60',
+            '-keyint_min', '60',
+            '-sc_threshold', '0',
+            
+            # FRAMERATE
+            '-r', '30',
             
             # ==========================================
-            # AUDIO - Copy sin recodificar
+            # CRITICO: NO forzar resolución
+            # Esto permite que horizontal sea horizontal
+            # y vertical sea vertical
+            # ==========================================
+            # NO incluir -s (scale)
+            # NO incluir -vf scale
+            # Dejar que FFmpeg use la resolución original
+            
+            # ==========================================
+            # AUDIO
             # ==========================================
             '-c:a', 'copy',
             
             # ==========================================
-            # OUTPUT - FLV para RTMP/RTMPS
+            # OUTPUT
             # ==========================================
             '-f', 'flv',
             
             destination_url
         ]
         
-        logger.info(f"🔧 Comando FFmpeg Facebook (copy mode - sin recodificar)")
-        logger.info(f"   {' '.join(command)}")
+        logger.info("[OK] Comando OPTIMIZADO:")
+        logger.info("  - Video: H.264 con aspect ratio ORIGINAL")
+        logger.info("  - Bitrate: 4000k (calidad alta)")
+        logger.info("  - Resolucion: SIN FORZAR (respeta source)")
+        logger.info("  - Horizontal: se mantiene horizontal")
+        logger.info("  - Vertical: se mantiene vertical")
+        logger.info("-" * 80)
+        logger.info("")
+        logger.info("IMPORTANTE:")
+        logger.info("  - Si ManyCam envia 1920x1080 -> Facebook recibe 1920x1080")
+        logger.info("  - Si ManyCam envia 720x1280 -> Facebook recibe 720x1280")
+        logger.info("  - Sin cortes, sin zoom forzado")
+        logger.info("")
         
         return command
