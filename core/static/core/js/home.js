@@ -32,13 +32,6 @@ class CameraStatePoller {
       const res = await fetch('/estado-camaras/', { cache: 'no-store' });
       const data = await res.json();
       if (data.ok && data.cameras) {
-        Object.entries(data.cameras).forEach(([index, cam]) => {
-          const prevCam = this.allCameras[index];
-          if (cam.status === 'on_air' && prevCam && prevCam.hls_url && cam.hls_url !== prevCam.hls_url) {
-            cam.hls_url = prevCam.hls_url;
-          }
-        });
-
         this.allCameras = data.cameras;
         this.syncCameras(this.allCameras);
 
@@ -77,32 +70,39 @@ class CameraStatePoller {
   }
 
   async setOnAir(camIndex) {
+    // 🎯 OPTIMIZACIÓN: Actualizar UI inmediatamente (optimistic update)
     const card = document.querySelector(`.camera-card[data-camera="${camIndex}"]`);
     const currentCam = this.allCameras[camIndex];
+    
     if (card && currentCam) {
+        // Marcar esta cámara como ON_AIR inmediatamente
         this.applyState(card, { ...currentCam, status: 'on_air' });
     } else if (card) {
         this.applyState(card, { status: 'on_air' });
     }
 
     try {
+      // Hacer la petición al backend
       await fetch(`/poner-al-aire/${camIndex}/`, {
         method: 'POST',
         headers: { 'X-CSRFToken': getCSRFToken() }
       });
-      const cam = this.allCameras[camIndex];
-      if (cam && cam.hls_url) {
-        setTimeout(() => {
-          this.syncPreview({ status: 'on_air', hls_url: cam.hls_url });
-        }, 200);
-      }
+      
+      console.log(`✅ Cámara ${camIndex} puesta al aire`);
+      
+      // El WebSocket se encargará de actualizar el estado real
+      // No necesitamos hacer nada más aquí
+      
     } catch (e) {
-      console.warn('⚠️ Error poniendo cámara al aire', e);
+      console.error('❌ Error poniendo cámara al aire', e);
+      // Si falla, revertir el estado optimista
+      if (card && currentCam) {
+        this.applyState(card, currentCam);
+      }
     }
   }
 
   syncCameras(cameras) {
-    let onAirCam = null;
     const grid = document.getElementById('camerasGrid');
     const emptyState = document.getElementById('camerasEmpty');
     const countEl = document.getElementById('activeCamCount');
@@ -118,6 +118,9 @@ class CameraStatePoller {
       if (emptyState) emptyState.style.display = 'none';
     }
 
+    // Buscar la cámara ON_AIR actual
+    let onAirCam = null;
+
     Object.entries(cameras).forEach(([index, cam]) => {
       let wrapper = document.querySelector(`.camera-wrapper[data-camera="${index}"]`);
       let card = wrapper ? wrapper.querySelector('.camera-card') : null;
@@ -129,6 +132,7 @@ class CameraStatePoller {
 
       if (!card) return;
 
+      // 🔄 ACTUALIZAR VIDEO SOLO SI HAY URL
       if ((cam.status === 'ready' || cam.status === 'on_air') && cam.hls_url) {
         this.ensureVideoElement(card);
         this.attachStreamWithWait(card, cam.hls_url);
@@ -136,14 +140,23 @@ class CameraStatePoller {
         this.cleanupVideo(card);
       }
 
-      if (this.lastState[index] !== cam.status) {
+      // 🎨 ACTUALIZAR ESTADO VISUAL SIEMPRE
+      const previousStatus = this.lastState[index];
+      
+      // Solo aplicar estado si cambió
+      if (previousStatus !== cam.status) {
+        console.log(`🔄 Cámara ${index}: ${previousStatus || 'null'} → ${cam.status}`);
         this.applyState(card, cam);
         this.lastState[index] = cam.status;
       }
 
-      if (cam.status === 'on_air') onAirCam = cam;
+      // Registrar cámara ON_AIR
+      if (cam.status === 'on_air') {
+        onAirCam = cam;
+      }
     });
 
+    // Actualizar preview solo si cambió la cámara ON_AIR
     this.syncPreview(onAirCam);
   }
 
@@ -158,6 +171,10 @@ class CameraStatePoller {
     }
     const loader = card.querySelector('.video-loader');
     if (loader) loader.remove();
+    
+    // Limpiar el overlay de "AL AIRE" si existe
+    const overlay = card.querySelector('.ready-action-overlay');
+    if (overlay) overlay.remove();
   }
 
   async syncPreview(cam) {
@@ -332,7 +349,10 @@ class CameraStatePoller {
     const preview = card.querySelector('.camera-preview');
     const bar = card.querySelector('.camera-info-bar');
 
+    // Actualizar clase de la tarjeta
     card.className = `camera-card ${cam.status}`;
+    
+    // Mostrar/ocultar toolbar según estado
     toolbar.style.display = (cam.status === 'ready' || cam.status === 'on_air') ? 'flex' : 'none';
 
     switch (cam.status) {
@@ -362,6 +382,12 @@ class CameraStatePoller {
           v.style.objectFit = 'cover';
         }
 
+        // 🔴 IMPORTANTE: Limpiar overlay de ON_AIR si existe
+        const oldOverlay = preview.querySelector('.ready-action-overlay');
+        if (oldOverlay) {
+          oldOverlay.remove();
+        }
+
         const previewContainer = card.querySelector('.camera-preview');
         if (!previewContainer.querySelector('.ready-action-overlay')) {
           const overlay = document.createElement('div');
@@ -388,8 +414,12 @@ class CameraStatePoller {
         bar.innerHTML = '';
         bar.classList.add('hidden-bar');
         actionArea.innerHTML = '';
-        const btnOnAir = toolbar.querySelector('.btn-on-air-ext');
-        if (btnOnAir) btnOnAir.remove();
+        
+        // 🔴 IMPORTANTE: Quitar overlay de "AL AIRE"
+        const overlayOnAir = preview.querySelector('.ready-action-overlay');
+        if (overlayOnAir) {
+          overlayOnAir.remove();
+        }
         
         const videoOnAir = card.querySelector('video');
         if (videoOnAir) {
@@ -413,7 +443,8 @@ class CameraStatePoller {
     const preview = card.querySelector('.camera-preview');
     if (preview.querySelector('video')) return;
 
-    preview.style.position = 'relative';
+    // Limpiar contenido anterior (excepto overlay si existe)
+    const existingOverlay = preview.querySelector('.ready-action-overlay');
     preview.innerHTML = '';
     
     const video = document.createElement('video');
@@ -443,6 +474,11 @@ class CameraStatePoller {
 
     preview.appendChild(video);
     preview.appendChild(loader);
+    
+    // Restaurar overlay si existía
+    if (existingOverlay) {
+      preview.appendChild(existingOverlay);
+    }
   }
 
   async attachStreamWithWait(card, url) {
@@ -612,6 +648,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
   const ws = new WebSocket(`${protocol}://${location.host}/ws/panel/`);
+  
+  // Guardar referencia global para multistream
+  window.panelWebSocket = ws;
 
   ws.onopen = () => console.log('🟢 WebSocket conectado');
   ws.onclose = () => console.log('🔴 WebSocket desconectado');
@@ -627,21 +666,22 @@ document.addEventListener('DOMContentLoaded', () => {
         break;
 
       case 'camara_actualizada':
-        const currentCam = window.cameraPoller.allCameras[data.cam_index] || {};
-        let newUrl = data.hls_url;
+        const cam_index = data.cam_index;
+        const currentCam = window.cameraPoller.allCameras[cam_index] || {};
 
-        if (data.estado === 'on_air' && currentCam.hls_url) {
-          newUrl = currentCam.hls_url;
-        }
-
-        window.cameraPoller.allCameras[data.cam_index] = {
-          ...currentCam,
+        // Actualizar la cámara en el estado
+        window.cameraPoller.allCameras[cam_index] = {
           status: data.estado,
-          hls_url: newUrl,
+          hls_url: data.hls_url,
           authorized: data.authorized
         };
+
+        console.log(`📡 WebSocket: Cámara ${cam_index} → ${data.estado}`);
+
+        // Sincronizar todas las cámaras (esto actualizará la UI)
         window.cameraPoller.syncCameras(window.cameraPoller.allCameras);
 
+        // Si es ON_AIR, actualizar preview
         if (data.estado === 'on_air' && data.hls_url) {
           setTimeout(() => {
             window.cameraPoller.syncPreview({ status: 'on_air', hls_url: data.hls_url });

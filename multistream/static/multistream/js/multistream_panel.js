@@ -1,6 +1,6 @@
 // ===================================
-// MULTISTREAM PANEL MANAGER
-// Gestión completa de retransmisión
+// MULTISTREAM PANEL MANAGER V2
+// Gestión completa de retransmisión con persistencia
 // ===================================
 
 class MultistreamManager {
@@ -9,11 +9,181 @@ class MultistreamManager {
     this.init();
   }
 
-  init() {
-    console.log('🎛 MultistreamManager iniciado');
+  async init() {
+    console.log('🎛 MultistreamManager V2 iniciado');
+    
+    // 1. Cargar estado guardado localmente
+    this.loadLocalState();
+    
+    // 2. Sincronizar con el servidor
+    await this.syncWithServer();
+    
+    // 3. Configurar eventos
     this.bindEvents();
     this.checkStreamStatus();
+    
+    // 4. Escuchar actualizaciones por WebSocket
+    this.listenToWebSocket();
+    
+    console.log('✅ MultistreamManager inicializado completamente');
   }
+
+  // ========================================
+  // PERSISTENCIA Y SINCRONIZACIÓN
+  // ========================================
+
+  /**
+   * Carga el estado guardado en localStorage
+   */
+  loadLocalState() {
+    try {
+      const saved = localStorage.getItem('multistream_active_platforms');
+      if (saved) {
+        this.activePlatforms = JSON.parse(saved);
+        console.log('📦 Estado local cargado:', this.activePlatforms);
+        this.updateRestreamStatus();
+      }
+    } catch (error) {
+      console.error('❌ Error cargando estado local:', error);
+    }
+  }
+
+  /**
+   * Guarda el estado actual en localStorage
+   */
+  saveLocalState() {
+    try {
+      localStorage.setItem('multistream_active_platforms', JSON.stringify(this.activePlatforms));
+      console.log('💾 Estado guardado localmente');
+    } catch (error) {
+      console.error('❌ Error guardando estado local:', error);
+    }
+  }
+
+  /**
+   * Sincroniza con el servidor para obtener el estado real
+   */
+  async syncWithServer() {
+    try {
+      console.log('🔄 Sincronizando con servidor...');
+      
+      const response = await fetch('/multistream/api/restream/status/', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        cache: 'no-store'
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('📥 Estado del servidor:', data);
+
+      if (data.ok && data.active_platforms) {
+        // Actualizar estado con datos del servidor
+        this.activePlatforms = {};
+        
+        data.active_platforms.forEach(platform => {
+          this.activePlatforms[platform] = {
+            status: 'streaming',
+            startedAt: Date.now(),
+            syncedFromServer: true
+          };
+        });
+
+        this.saveLocalState();
+        this.updateRestreamStatus();
+        
+        console.log('✅ Estado sincronizado:', Object.keys(this.activePlatforms));
+      }
+
+    } catch (error) {
+      console.warn('⚠️ No se pudo sincronizar con servidor:', error.message);
+      console.log('📦 Usando estado local guardado');
+    }
+  }
+
+  /**
+   * Escucha eventos de WebSocket para actualizaciones en tiempo real
+   */
+  listenToWebSocket() {
+    // Buscar el WebSocket ya existente o esperar a que se cree
+    const checkWebSocket = () => {
+      // El WebSocket se crea en home.js como variable global
+      const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+      
+      // Si ya existe un WebSocket global, usarlo
+      if (window.panelWebSocket) {
+        this.attachWebSocketListeners(window.panelWebSocket);
+        return;
+      }
+
+      // Sino, crear uno nuevo o esperar
+      setTimeout(checkWebSocket, 500);
+    };
+
+    checkWebSocket();
+  }
+
+  /**
+   * Adjunta listeners al WebSocket para eventos de retransmisión
+   */
+  attachWebSocketListeners(ws) {
+    console.log('🔌 WebSocket conectado a MultistreamManager');
+
+    const originalOnMessage = ws.onmessage;
+
+    ws.onmessage = (event) => {
+      // Llamar al handler original primero
+      if (originalOnMessage) {
+        originalOnMessage.call(ws, event);
+      }
+
+      // Procesar mensajes de retransmisión
+      try {
+        const data = JSON.parse(event.data);
+
+        if (data.tipo === 'restream_update') {
+          console.log('📡 Actualización de retransmisión:', data);
+          this.handleRestreamUpdate(data);
+        }
+      } catch (error) {
+        // Ignorar errores de parsing si no es JSON
+      }
+    };
+  }
+
+  /**
+   * Maneja actualizaciones de retransmisión desde WebSocket
+   */
+  handleRestreamUpdate(data) {
+    const { platform, action, status } = data;
+
+    switch (action) {
+      case 'started':
+        this.addActivePlatform(platform);
+        break;
+
+      case 'stopped':
+        this.removePlatform(platform);
+        break;
+
+      case 'error':
+        this.updatePlatformStatus(platform, 'error');
+        break;
+
+      case 'status_update':
+        this.updatePlatformStatus(platform, status);
+        break;
+    }
+  }
+
+  // ========================================
+  // GESTIÓN DE ESTADO DE STREAM
+  // ========================================
 
   checkStreamStatus() {
     // Observar cambios en el estado del stream
@@ -48,6 +218,10 @@ class MultistreamManager {
       }
     }
   }
+
+  // ========================================
+  // EVENTOS DEL MODAL
+  // ========================================
 
   bindEvents() {
     const btnRestream = document.getElementById('btnRestream');
@@ -105,6 +279,10 @@ class MultistreamManager {
     }
   }
 
+  // ========================================
+  // INICIAR RETRANSMISIÓN
+  // ========================================
+
   async startRestream(force = false) {
     const selectedPlatforms = Array.from(
       document.querySelectorAll('input[name="platform"]:checked')
@@ -118,7 +296,6 @@ class MultistreamManager {
     console.log(`🚀 Iniciando retransmisión en: ${selectedPlatforms.join(', ')} (force=${force})`);
     
     const csrfToken = this.getCSRFToken();
-    console.log('🔑 CSRF Token:', csrfToken ? 'OK' : '❌ NO ENCONTRADO');
     
     const btnStartRestream = document.getElementById('btnStartRestream');
     btnStartRestream.disabled = true;
@@ -126,8 +303,6 @@ class MultistreamManager {
     btnStartRestream.innerHTML = '<span>Iniciando...</span>';
 
     try {
-      console.log('📡 Enviando petición a:', '/multistream/api/restream/start/');
-      
       const response = await fetch('/multistream/api/restream/start/', {
         method: 'POST',
         headers: {
@@ -136,11 +311,9 @@ class MultistreamManager {
         },
         body: JSON.stringify({ 
           platforms: selectedPlatforms,
-          force: force  // Nuevo parámetro
+          force: force
         })
       });
-
-      console.log('📥 Status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -150,23 +323,11 @@ class MultistreamManager {
 
       const data = await response.json();
       console.log('✅ Respuesta:', data);
-      console.log('📋 OK?', data.ok);
-      console.log('📋 Resultados completos:', data.resultados);
-      
-      if (data.resultados && data.resultados.length > 0) {
-        data.resultados.forEach((r, i) => {
-          console.log(`   [${i}] Platform: ${r.platform}`);
-          console.log(`   [${i}] Success: ${r.success}`);
-          console.log(`   [${i}] Message: ${r.message}`);
-          console.log(`   [${i}] Requires Confirmation: ${r.requires_confirmation}`);
-        });
-      }
 
       // Verificar si alguna plataforma requiere confirmación
-      const requiresConfirmation = data.resultados.some(r => r.requires_confirmation);
+      const requiresConfirmation = data.resultados?.some(r => r.requires_confirmation);
 
       if (requiresConfirmation && !force) {
-        // Mostrar confirmación al usuario
         const confirmationMessages = data.resultados
           .filter(r => r.requires_confirmation)
           .map(r => `• ${r.platform.toUpperCase()}: ${r.message}`)
@@ -179,12 +340,9 @@ class MultistreamManager {
         );
 
         if (userConfirmed) {
-          console.log('✅ Usuario confirmó - reintentando con force=true');
-          // Reintentar con force=true
           await this.startRestream(true);
           return;
         } else {
-          console.log('❌ Usuario canceló');
           alert('❌ Operación cancelada');
           return;
         }
@@ -218,39 +376,47 @@ class MultistreamManager {
 
     } catch (error) {
       console.error('💥 Error:', error);
-      alert(`❌ Error: ${error.message}\n\nRevisa la consola (F12)`);
+      alert(`❌ Error: ${error.message}`);
     } finally {
       btnStartRestream.disabled = false;
       btnStartRestream.innerHTML = originalHTML;
     }
   }
 
-  getCSRFToken() {
-    const cookieValue = document.cookie
-      .split('; ')
-      .find(row => row.startsWith('csrftoken='))
-      ?.split('=')[1];
-    return cookieValue;
-  }
+  // ========================================
+  // GESTIÓN DE PLATAFORMAS ACTIVAS
+  // ========================================
 
   addActivePlatform(platform) {
     this.activePlatforms[platform] = {
       status: 'streaming',
       startedAt: Date.now()
     };
+    
+    this.saveLocalState();
     this.updateRestreamStatus();
     this.showRestreamButton();
+    
+    console.log(`✅ Plataforma activa agregada: ${platform}`);
   }
 
   removePlatform(platform) {
     delete this.activePlatforms[platform];
+    
+    this.saveLocalState();
     this.updateRestreamStatus();
+    
+    console.log(`🗑️ Plataforma removida: ${platform}`);
   }
 
   updatePlatformStatus(platform, status) {
     if (this.activePlatforms[platform]) {
       this.activePlatforms[platform].status = status;
+      
+      this.saveLocalState();
       this.updateRestreamStatus();
+      
+      console.log(`🔄 Estado actualizado: ${platform} -> ${status}`);
     }
   }
 
@@ -267,6 +433,10 @@ class MultistreamManager {
       btnRestream.style.display = 'none';
     }
   }
+
+  // ========================================
+  // UI DE RETRANSMISIÓN ACTIVA
+  // ========================================
 
   updateRestreamStatus() {
     const panel = document.getElementById('restreamStatusPanel');
@@ -326,10 +496,18 @@ class MultistreamManager {
         }
       });
     });
+
+    console.log(`🎯 Panel actualizado: ${activePlatformsList.length} plataformas activas`);
   }
+
+  // ========================================
+  // DETENER RETRANSMISIÓN
+  // ========================================
 
   async stopPlatformRestream(platform) {
     try {
+      console.log(`🛑 Deteniendo ${platform}...`);
+      
       const response = await fetch(`/multistream/api/restream/stop/${platform}/`, {
         method: 'POST',
         headers: {
@@ -341,23 +519,39 @@ class MultistreamManager {
       const data = await response.json();
 
       if (data.ok) {
-        console.log(`✅ ${platform} detenido`);
+        console.log(`✅ ${platform} detenido correctamente`);
         this.removePlatform(platform);
+        alert(`✅ Retransmisión en ${platform} detenida`);
       } else {
         throw new Error(data.message || 'Error desconocido');
       }
 
     } catch (error) {
-      console.error(`Error deteniendo ${platform}:`, error);
+      console.error(`❌ Error deteniendo ${platform}:`, error);
       alert(`Error al detener ${platform}: ${error.message}`);
       this.updatePlatformStatus(platform, 'error');
     }
   }
+
+  // ========================================
+  // UTILIDADES
+  // ========================================
+
+  getCSRFToken() {
+    const cookieValue = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('csrftoken='))
+      ?.split('=')[1];
+    return cookieValue;
+  }
 }
 
-// Inicializar cuando el DOM esté listo
+// ========================================
+// INICIALIZACIÓN
+// ========================================
 document.addEventListener('DOMContentLoaded', () => {
   if (document.querySelector('.control-body')) {
     window.multistreamManager = new MultistreamManager();
+    console.log('✅ MultistreamManager disponible globalmente');
   }
 });

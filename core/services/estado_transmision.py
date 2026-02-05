@@ -9,6 +9,7 @@ from core.services.ffmpeg_manager import (
 )
 from core.services.notificaciones_tiempo_real import (
     notificar_actualizacion_camara,
+    notificar_camara_actualizada,
     notificar_camara_eliminada,
     notificar_estado_canal,
 )
@@ -58,10 +59,14 @@ def detener_transmision_usuario(user):
     notificar_estado_canal(user)
 
     print(f"[DEBUG] Transmisión FINALIZADA correctamente para {user.username}")
-    print(f"[DEBUG] Transmisión FINALIZADA correctamente para {user.username}")
 
 
 def poner_camara_al_aire(user, cam_index):
+    """
+    Pone una cámara al aire.
+    
+    CORREGIDO: Ahora notifica cuando las cámaras anteriores bajan de estado.
+    """
     try:
         conn = StreamConnection.objects.get(
             user=user,
@@ -72,16 +77,35 @@ def poner_camara_al_aire(user, cam_index):
     except StreamConnection.DoesNotExist:
         raise ValueError("La cámara no está lista para salir al aire")
 
-    # Marcar esta cámara como ON_AIR
+    # 🔴 PASO 1: Bajar TODAS las cámaras ON_AIR a READY
+    # Obtenemos la lista ANTES de actualizar para poder notificar
+    camaras_anteriores = list(
+        StreamConnection.objects.filter(
+            user=user,
+            status=StreamConnection.Status.ON_AIR
+        ).values_list('cam_index', flat=True)
+    )
+    
+    # Actualizamos todas a READY
     StreamConnection.objects.filter(
         user=user,
         status=StreamConnection.Status.ON_AIR
     ).update(status=StreamConnection.Status.READY)
+    
+    # 🔔 Notificar cada cámara que bajó de estado
+    for prev_cam_index in camaras_anteriores:
+        print(f"[DEBUG] Bajando cámara {prev_cam_index} de ON_AIR a READY")
+        notificar_camara_actualizada(user, prev_cam_index)
 
+    # 🟢 PASO 2: Subir la nueva cámara a ON_AIR
     conn.status = StreamConnection.Status.ON_AIR
     conn.save()
+    
+    # 🔔 Notificar la nueva cámara ON_AIR
+    print(f"[DEBUG] Subiendo cámara {cam_index} a ON_AIR")
+    notificar_camara_actualizada(user, cam_index)
 
-    # Crear / actualizar canal
+    # 🎬 PASO 3: Crear / actualizar canal
     canal, created = CanalTransmision.objects.get_or_create(
         usuario=user,
         defaults={
@@ -94,7 +118,8 @@ def poner_camara_al_aire(user, cam_index):
         canal.inicio_transmision = timezone.now()
         canal.save()
 
-    # 🔄 Primero feeder
+    # 🔄 PASO 4: Cambiar fuente de video
+    # Primero feeder
     switch_program_camera(user, conn.stream_key)
 
     # 🔥 Después maestro
@@ -118,12 +143,8 @@ def cerrar_camara_usuario(user, cam_index):
     if not conn:
         return
 
-    # estaba_on_air = conn.status == StreamConnection.Status.ON_AIR  # ← ya no se usa para apagar
     conn.delete()
     notificar_camara_eliminada(user, cam_index)
-
-    # NO llamar a detener_transmision_usuario aquí.
-    # La detención global se evalúa en stream_finalizado con un chequeo de ON_AIR.
 
 
 # ===============================
