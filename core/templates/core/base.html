@@ -4,16 +4,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>{% block title %}KAIRCAM - Streaming Video Platform{% endblock %}</title>
-    
+
+    <!-- ✅ FAVICON (LOGO EN LA PESTAÑA) -->
+    <link rel="icon" type="image/png" href="{% static 'core/images/logokair.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'core/images/logokair.png' %}">
+
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=Material+Icons&display=swap" rel="stylesheet">
-    
+
+    <!-- Base CSS -->
     <link rel="stylesheet" href="{% static 'core/css/base.css' %}">
     {% block extra_css %}{% endblock %}
+
+    <!-- CSRF -->
     <meta name="csrf-token" content="{{ csrf_token }}">
 </head>
+
 <body class="{% block body_class %}{% endblock %}">
 
     <header class="control-header">
