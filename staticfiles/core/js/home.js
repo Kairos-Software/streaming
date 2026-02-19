@@ -1,4 +1,15 @@
 // ===================================
+// CSRF TOKEN HELPER
+// ===================================
+function getCSRFToken() {
+    const cookieValue = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('csrftoken='))
+        ?.split('=')[1];
+    return cookieValue;
+}
+
+// ===================================
 // CAMERA STATE MANAGER (SNAPSHOT + WS)
 // ===================================
 class CameraStatePoller {
@@ -7,13 +18,10 @@ class CameraStatePoller {
     this.previewHls = null;
     this.currentPreviewUrl = null;
     this.hasActivePreview = false;
-    this.allCameras = {}; // estado acumulado para evitar borrados por updates parciales
+    this.allCameras = {};
     this.start();
   }
 
-  // ============================
-  // SNAPSHOT INICIAL
-  // ============================
   async start() {
     await this.fetchState();
     console.log('📸 Snapshot inicial de cámaras cargado');
@@ -24,41 +32,16 @@ class CameraStatePoller {
       const res = await fetch('/estado-camaras/', { cache: 'no-store' });
       const data = await res.json();
       if (data.ok && data.cameras) {
-
-        // ============================================
-        // FIX SNAPSHOT: NO usar el program en tarjetas
-        // ============================================
-        Object.entries(data.cameras).forEach(([index, cam]) => {
-          const prevCam = this.allCameras[index];
-
-          // Si viene ON_AIR y el backend mandó la URL del program,
-          // mantenemos la URL de entrada (input) si ya existía
-          if (
-            cam.status === 'on_air' &&
-            prevCam &&
-            prevCam.hls_url &&
-            cam.hls_url !== prevCam.hls_url
-          ) {
-            cam.hls_url = prevCam.hls_url;
-          }
-        });
-
-        // Mantener estado completo
         this.allCameras = data.cameras;
         this.syncCameras(this.allCameras);
 
-        // ============================================
-        // FIX PREVIEW: Buscar la cámara que está ON_AIR actualmente
-        // ============================================
         const currentOnAirCam = Object.values(data.cameras).find(cam => cam.status === 'on_air');
         
         if (currentOnAirCam && currentOnAirCam.hls_url) {
-          // Usar la URL de la cámara específica que está al aire AHORA
           setTimeout(() => {
             this.syncPreview({ status: 'on_air', hls_url: currentOnAirCam.hls_url });
           }, 300);
         } else if (data.canal && data.canal.en_vivo && data.canal.hls_url) {
-          // Fallback: si no encontramos cámara on_air pero el canal dice que está en vivo
           setTimeout(() => {
             this.syncPreview({ status: 'on_air', hls_url: data.canal.hls_url });
           }, 300);
@@ -66,15 +49,11 @@ class CameraStatePoller {
           this.syncPreview(null);
         }
       }
-
     } catch (e) {
       console.warn('⚠️ Error snapshot cámaras', e);
     }
   }
 
-  // ============================
-  // VERIFICAR STREAM DISPONIBLE
-  // ============================
   async waitForStream(url, maxAttempts = 8) {
     for (let i = 0; i < maxAttempts; i++) {
       try {
@@ -83,102 +62,104 @@ class CameraStatePoller {
           console.log(`✅ Stream listo: ${url}`);
           return true;
         }
-      } catch (e) {
-        // Continuar intentando
-      }
+      } catch (e) {}
       await new Promise(resolve => setTimeout(resolve, 500));
     }
     console.warn(`⚠️ Stream no disponible: ${url}`);
     return false;
   }
 
-  // ============================
-  // PONER CÁMARA AL AIRE
-  // ============================
   async setOnAir(camIndex) {
+    // 🎯 OPTIMIZACIÓN: Actualizar UI inmediatamente (optimistic update)
     const card = document.querySelector(`.camera-card[data-camera="${camIndex}"]`);
-    // Mejora: Pasamos el objeto completo para no perder la URL durante el cambio de UI
     const currentCam = this.allCameras[camIndex];
+    
     if (card && currentCam) {
+        // Marcar esta cámara como ON_AIR inmediatamente
         this.applyState(card, { ...currentCam, status: 'on_air' });
     } else if (card) {
         this.applyState(card, { status: 'on_air' });
     }
 
     try {
-      const res = await fetch(`/poner-al-aire/${camIndex}/`, {
+      // Hacer la petición al backend
+      await fetch(`/poner-al-aire/${camIndex}/`, {
         method: 'POST',
         headers: { 'X-CSRFToken': getCSRFToken() }
       });
-      // Forzar preview inmediata en primera vez
-      const cam = this.allCameras[camIndex];
-      if (cam && cam.hls_url) {
-        setTimeout(() => {
-          this.syncPreview({ status: 'on_air', hls_url: cam.hls_url });
-        }, 200);
-      }
+      
+      console.log(`✅ Cámara ${camIndex} puesta al aire`);
+      
+      // El WebSocket se encargará de actualizar el estado real
+      // No necesitamos hacer nada más aquí
+      
     } catch (e) {
-      console.warn('⚠️ Error poniendo cámara al aire', e);
+      console.error('❌ Error poniendo cámara al aire', e);
+      // Si falla, revertir el estado optimista
+      if (card && currentCam) {
+        this.applyState(card, currentCam);
+      }
     }
   }
 
-    // ============================
-    // SINCRONIZAR CÁMARAS
-    // ============================
-    syncCameras(cameras) {
-      let onAirCam = null;
+  syncCameras(cameras) {
+    const grid = document.getElementById('camerasGrid');
+    const emptyState = document.getElementById('camerasEmpty');
+    const countEl = document.getElementById('activeCamCount');
 
-      const grid = document.getElementById('camerasGrid');
-      const emptyState = document.getElementById('camerasEmpty');
-      const countEl = document.getElementById('activeCamCount');
+    if (countEl) countEl.textContent = Object.keys(cameras).length;
 
-      if (countEl) countEl.textContent = Object.keys(cameras).length;
-
-      if (Object.keys(cameras).length === 0) {
-        if (emptyState) emptyState.style.display = 'block';
-        if (grid) grid.innerHTML = '';
-        this.syncPreview(null);
-        return;
-      } else {
-        if (emptyState) emptyState.style.display = 'none';
-      }
-
-      // Crear o actualizar cámaras (NO borrar por updates parciales)
-      Object.entries(cameras).forEach(([index, cam]) => {
-        let wrapper = document.querySelector(`.camera-wrapper[data-camera="${index}"]`);
-        let card = wrapper ? wrapper.querySelector('.camera-card') : null;
-
-        if (!wrapper && cam.status !== 'offline') {
-          card = this.createCameraCard(index);
-          wrapper = card ? card.closest('.camera-wrapper') : null;
-        }
-
-        if (!card) return;
-
-        // FIX: Asegurar video ANTES de aplicar estado visual (evita franja negra en refresh)
-        if ((cam.status === 'ready' || cam.status === 'on_air') && cam.hls_url) {
-          this.ensureVideoElement(card);
-          this.attachStreamWithWait(card, cam.hls_url);
-        } else {
-          this.cleanupVideo(card);
-        }
-
-        // Actualizar estado solo si cambió (DESPUÉS de crear video)
-        if (this.lastState[index] !== cam.status) {
-          this.applyState(card, cam);
-          this.lastState[index] = cam.status;
-        }
-
-        if (cam.status === 'on_air') onAirCam = cam;
-      });
-
-      // No eliminar wrappers aquí. Solo en evento explícito de eliminación.
-      this.syncPreview(onAirCam);
+    if (Object.keys(cameras).length === 0) {
+      if (emptyState) emptyState.style.display = 'block';
+      if (grid) grid.innerHTML = '';
+      this.syncPreview(null);
+      return;
+    } else {
+      if (emptyState) emptyState.style.display = 'none';
     }
 
-  // ============================
-  // LIMPIAR VIDEO
-  // ============================
+    // Buscar la cámara ON_AIR actual
+    let onAirCam = null;
+
+    Object.entries(cameras).forEach(([index, cam]) => {
+      let wrapper = document.querySelector(`.camera-wrapper[data-camera="${index}"]`);
+      let card = wrapper ? wrapper.querySelector('.camera-card') : null;
+
+      if (!wrapper && cam.status !== 'offline') {
+        card = this.createCameraCard(index);
+        wrapper = card ? card.closest('.camera-wrapper') : null;
+      }
+
+      if (!card) return;
+
+      // 🔄 ACTUALIZAR VIDEO SOLO SI HAY URL
+      if ((cam.status === 'ready' || cam.status === 'on_air') && cam.hls_url) {
+        this.ensureVideoElement(card);
+        this.attachStreamWithWait(card, cam.hls_url);
+      } else {
+        this.cleanupVideo(card);
+      }
+
+      // 🎨 ACTUALIZAR ESTADO VISUAL SIEMPRE
+      const previousStatus = this.lastState[index];
+      
+      // Solo aplicar estado si cambió
+      if (previousStatus !== cam.status) {
+        console.log(`🔄 Cámara ${index}: ${previousStatus || 'null'} → ${cam.status}`);
+        this.applyState(card, cam);
+        this.lastState[index] = cam.status;
+      }
+
+      // Registrar cámara ON_AIR
+      if (cam.status === 'on_air') {
+        onAirCam = cam;
+      }
+    });
+
+    // Actualizar preview solo si cambió la cámara ON_AIR
+    this.syncPreview(onAirCam);
+  }
+
   cleanupVideo(card) {
     const video = card.querySelector('video');
     if (video) {
@@ -190,11 +171,12 @@ class CameraStatePoller {
     }
     const loader = card.querySelector('.video-loader');
     if (loader) loader.remove();
+    
+    // Limpiar el overlay de "AL AIRE" si existe
+    const overlay = card.querySelector('.ready-action-overlay');
+    if (overlay) overlay.remove();
   }
 
-  // ============================
-  // PREVIEW PRINCIPAL
-  // ============================
   async syncPreview(cam) {
     const video = document.getElementById('mainPreviewVideo');
     const empty = document.getElementById('previewEmpty');
@@ -211,7 +193,6 @@ class CameraStatePoller {
       return;
     }
 
-    // Evitar reataches innecesarios
     if (this.currentPreviewUrl === cam.hls_url && this.previewHls) {
       if (liveBadge) {
         liveBadge.className = 'live-badge active';
@@ -230,7 +211,6 @@ class CameraStatePoller {
     this.hasActivePreview = true;
 
     if (video) {
-      // Asegurar estilo para evitar borde negro (fix #3)
       video.style.display = 'block';
       video.style.width = '100%';
       video.style.height = '100%';
@@ -244,7 +224,6 @@ class CameraStatePoller {
     }
     if (streamStatus) streamStatus.textContent = 'EN VIVO';
 
-    // Esperar a que el stream esté disponible (fix #2: primera vez)
     const streamReady = await this.waitForStream(cam.hls_url);
     if (!streamReady) {
       console.error('Preview stream no disponible');
@@ -282,7 +261,6 @@ class CameraStatePoller {
       });
       this.previewHls = hls;
     } else {
-      // Fallback nativo
       video.src = cam.hls_url;
       video.play().catch(() => {});
     }
@@ -301,7 +279,6 @@ class CameraStatePoller {
       video.removeAttribute('src');
       video.load();
       video.style.display = 'none';
-      // Mantener tamaño para evitar saltos
       video.style.width = '100%';
       video.style.height = '100%';
       video.style.objectFit = 'cover';
@@ -312,9 +289,6 @@ class CameraStatePoller {
     this.hasActivePreview = false;
   }
 
-  // ============================
-  // CREAR CARD DE CÁMARA
-  // ============================
   createCameraCard(index) {
     const grid = document.getElementById('camerasGrid');
     if (!grid) return null;
@@ -344,9 +318,6 @@ class CameraStatePoller {
     return wrapper.querySelector('.camera-card');
   }
 
-  // ============================
-  // EVENTOS TOOLBAR
-  // ============================
   bindToolbarEvents(wrapper, index) {
     wrapper.querySelectorAll('.tool-btn').forEach(btn => {
       btn.onclick = async () => {
@@ -370,9 +341,6 @@ class CameraStatePoller {
     });
   }
 
-  // ============================
-  // RENDERIZADO DE ESTADO
-  // ============================
   applyState(card, cam) {
     const wrapper = card.closest('.camera-wrapper');
     const toolbar = wrapper.querySelector('.camera-external-toolbar');
@@ -381,8 +349,10 @@ class CameraStatePoller {
     const preview = card.querySelector('.camera-preview');
     const bar = card.querySelector('.camera-info-bar');
 
-    // Limpiar clases previas
+    // Actualizar clase de la tarjeta
     card.className = `camera-card ${cam.status}`;
+    
+    // Mostrar/ocultar toolbar según estado
     toolbar.style.display = (cam.status === 'ready' || cam.status === 'on_air') ? 'flex' : 'none';
 
     switch (cam.status) {
@@ -402,17 +372,8 @@ class CameraStatePoller {
         badge.textContent = 'LISTA';
         bar.innerHTML = '';
         bar.classList.add('hidden-bar');
+        toolbar.style.display = 'flex';
 
-        // Botón "PONER AL AIRE" externo
-        if (!toolbar.querySelector('.btn-on-air-ext')) {
-          const btn = document.createElement('button');
-          btn.className = 'btn-action-external btn-on-air-ext';
-          btn.textContent = 'PONER AL AIRE';
-          btn.onclick = () => this.setOnAir(card.dataset.camera);
-          toolbar.prepend(btn);
-        }
-
-        // Asegurar video sizing (fix #3)
         this.ensureVideoElement(card);
         const v = card.querySelector('video');
         if (v) {
@@ -420,18 +381,46 @@ class CameraStatePoller {
           v.style.height = '100%';
           v.style.objectFit = 'cover';
         }
+
+        // 🔴 IMPORTANTE: Limpiar overlay de ON_AIR si existe
+        const oldOverlay = preview.querySelector('.ready-action-overlay');
+        if (oldOverlay) {
+          oldOverlay.remove();
+        }
+
+        const previewContainer = card.querySelector('.camera-preview');
+        if (!previewContainer.querySelector('.ready-action-overlay')) {
+          const overlay = document.createElement('div');
+          overlay.className = 'ready-action-overlay';
+          overlay.innerHTML = `
+            <button class="btn-overlay-live">
+              <span class="material-icons">sensors</span>
+              AL AIRE
+            </button>
+          `;
+          
+          overlay.querySelector('button').onclick = (e) => {
+            e.stopPropagation();
+            this.setOnAir(card.dataset.camera);
+          };
+
+          previewContainer.appendChild(overlay);
+        }
         break;
 
       case 'on_air':
         badge.className = 'camera-status-badge on-air';
         badge.innerHTML = `<span class="badge-pulse"></span> EN AIRE`;
         bar.innerHTML = '';
-        bar.classList.add('hidden-bar'); // ← FIX: Ocultar completamente la barra
+        bar.classList.add('hidden-bar');
         actionArea.innerHTML = '';
-        const btnOnAir = toolbar.querySelector('.btn-on-air-ext');
-        if (btnOnAir) btnOnAir.remove();
         
-        // FIX: Asegurar video sizing también en on_air (evita franja negra en refresh)
+        // 🔴 IMPORTANTE: Quitar overlay de "AL AIRE"
+        const overlayOnAir = preview.querySelector('.ready-action-overlay');
+        if (overlayOnAir) {
+          overlayOnAir.remove();
+        }
+        
         const videoOnAir = card.querySelector('video');
         if (videoOnAir) {
           videoOnAir.style.width = '100%';
@@ -450,19 +439,12 @@ class CameraStatePoller {
     }
   }
 
-  // ============================
-  // ASEGURAR VIDEO ELEMENT
-  // ============================
   ensureVideoElement(card) {
     const preview = card.querySelector('.camera-preview');
-    // Si ya tiene video, no hacer nada
     if (preview.querySelector('video')) return;
 
-    // NO tocar aspect-ratio (ya está en CSS)
-    // Solo asegurar que sea relativo para que el video absolute funcione
-    preview.style.position = 'relative';
-
-    // Limpiar contenido previo y crear video directamente sin wrapper extra
+    // Limpiar contenido anterior (excepto overlay si existe)
+    const existingOverlay = preview.querySelector('.ready-action-overlay');
     preview.innerHTML = '';
     
     const video = document.createElement('video');
@@ -492,23 +474,22 @@ class CameraStatePoller {
 
     preview.appendChild(video);
     preview.appendChild(loader);
+    
+    // Restaurar overlay si existía
+    if (existingOverlay) {
+      preview.appendChild(existingOverlay);
+    }
   }
 
-  // ============================
-  // ADJUNTAR STREAM CON ESPERA
-  // ============================
   async attachStreamWithWait(card, url) {
     const video = card.querySelector('video');
     const loader = card.querySelector('.video-loader');
     if (!video) return;
 
-    // Si ya está cargado, no hacer nada
     if (video.dataset.src === url && video._hls) return;
 
-    // Mostrar loader
     if (loader) loader.style.display = 'flex';
 
-    // Esperar a que el stream esté disponible
     const streamReady = await this.waitForStream(url);
     if (!streamReady) {
       if (loader) {
@@ -520,18 +501,13 @@ class CameraStatePoller {
       return;
     }
 
-    // Cargar stream
     this.attachStream(card, url, loader);
   }
 
-  // ============================
-  // ADJUNTAR STREAM
-  // ============================
   attachStream(card, url, loader) {
     const video = card.querySelector('video');
     if (!video) return;
 
-    // Destruir HLS previo
     if (video._hls) {
       video._hls.destroy();
       delete video._hls;
@@ -580,7 +556,6 @@ class CameraStatePoller {
       video._hls = hls;
       video.dataset.src = url;
     } else {
-      // Fallback nativo
       video.src = url;
       video.play()
         .then(() => { if (loader) loader.style.display = 'none'; })
@@ -595,17 +570,51 @@ class CameraStatePoller {
     bar.dataset.bound = '1';
 
     const index = card.dataset.camera;
-    bar.innerHTML = `
-      <form class="accept-form">
-        <input type="password" name="pin" placeholder="PIN" required>
-        <button type="submit">Aceptar</button>
-      </form>
-      <form class="reject-form">
-        <button type="submit">Rechazar</button>
-      </form>
+    const previewArea = card.querySelector('.camera-preview');
+    
+    previewArea.innerHTML = '';
+    
+    const container = document.createElement('div');
+    container.style.display = 'flex';
+    container.style.flexDirection = 'column';
+    container.style.alignItems = 'center';
+    container.style.justifyContent = 'center';
+    container.style.width = '100%';
+    container.style.height = '100%';
+    container.style.padding = '16px';
+    
+    const headerHtml = `
+      <div style="text-align:center; margin-bottom:12px;">
+        <div style="font-size: 28px; color: var(--status-pending); margin-bottom: 4px;">
+          <span class="material-icons">lock</span>
+        </div>
+        <div class="preview-empty" style="font-size:10px;">Solicitud</div>
+      </div>
     `;
 
-    bar.querySelector('.accept-form').onsubmit = e => {
+    const actionsWrapper = document.createElement('div');
+    actionsWrapper.className = 'pending-actions-wrapper';
+    
+    actionsWrapper.innerHTML = `
+      <form class="accept-row">
+        <input type="password" name="pin" placeholder="PIN" maxlength="6" autocomplete="off" required>
+        <button type="submit" class="btn-accept-icon" title="Autorizar">
+          <span class="material-icons">check</span>
+        </button>
+      </form>
+      <button type="button" class="btn-reject-full" title="Rechazar">
+        <span class="material-icons" style="font-size:14px;">close</span> Rechazar
+      </button>
+    `;
+
+    container.innerHTML = headerHtml;
+    container.appendChild(actionsWrapper);
+    previewArea.appendChild(container);
+
+    const form = actionsWrapper.querySelector('.accept-row');
+    const rejectBtn = actionsWrapper.querySelector('.btn-reject-full');
+
+    form.onsubmit = e => {
       e.preventDefault();
       fetch(`/autorizar-camara/${index}/`, {
         method: 'POST',
@@ -613,16 +622,18 @@ class CameraStatePoller {
           'X-CSRFToken': getCSRFToken(),
           'Content-Type': 'application/x-www-form-urlencoded'
         },
-        body: `pin=${encodeURIComponent(e.target.pin.value)}`
+        body: `pin=${encodeURIComponent(form.pin.value)}`
       });
     };
 
-    bar.querySelector('.reject-form').onsubmit = e => {
+    rejectBtn.onclick = e => {
       e.preventDefault();
-      fetch(`/rechazar-camara/${index}/`, {
-        method: 'POST',
-        headers: { 'X-CSRFToken': getCSRFToken() }
-      });
+      if(confirm('¿Rechazar conexión?')) {
+        fetch(`/rechazar-camara/${index}/`, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': getCSRFToken() }
+        });
+      }
     };
   }
 }
@@ -637,6 +648,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
   const ws = new WebSocket(`${protocol}://${location.host}/ws/panel/`);
+  
+  // Guardar referencia global para multistream
+  window.panelWebSocket = ws;
 
   ws.onopen = () => console.log('🟢 WebSocket conectado');
   ws.onclose = () => console.log('🔴 WebSocket desconectado');
@@ -647,61 +661,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
     switch (data.tipo) {
       case 'estado_camaras':
-        // Snapshot completo
         window.cameraPoller.allCameras = data.cameras || {};
         window.cameraPoller.syncCameras(window.cameraPoller.allCameras);
         break;
 
       case 'camara_actualizada':
-        // Actualización parcial
-        
-        // --- CORRECCIÓN BUG IMAGENES DUPLICADAS (Realtime) ---
-        // Si el backend nos manda la URL del programa (output) porque la cámara está 'on_air',
-        // nosotros la ignoramos y mantenemos la URL de entrada (input) si ya la teníamos.
-        // Esto asegura que la tarjeta pequeña siempre muestre la cámara individual.
-        
-        const currentCam = window.cameraPoller.allCameras[data.cam_index] || {};
-        let newUrl = data.hls_url;
+        const cam_index = data.cam_index;
+        const currentCam = window.cameraPoller.allCameras[cam_index] || {};
 
-        if (data.estado === 'on_air' && currentCam.hls_url) {
-            // Si ya teníamos una URL válida (la de source), la mantenemos
-            // aunque el backend intente darnos la del programa.
-            newUrl = currentCam.hls_url;
-        }
-
-        window.cameraPoller.allCameras[data.cam_index] = {
-          ...currentCam,
+        // Actualizar la cámara en el estado
+        window.cameraPoller.allCameras[cam_index] = {
           status: data.estado,
-          hls_url: newUrl,
+          hls_url: data.hls_url,
           authorized: data.authorized
         };
+
+        console.log(`📡 WebSocket: Cámara ${cam_index} → ${data.estado}`);
+
+        // Sincronizar todas las cámaras (esto actualizará la UI)
         window.cameraPoller.syncCameras(window.cameraPoller.allCameras);
 
-        // Primera vez al aire: forzar preview principal (este SÍ usa la del programa si el backend quiere)
-        // Pero generalmente el preview principal usa el evento 'estado_canal'.
-        // Este fallback es por si acaso.
+        // Si es ON_AIR, actualizar preview
         if (data.estado === 'on_air' && data.hls_url) {
           setTimeout(() => {
-            // Aquí pasamos explícitamente data.hls_url por si queremos que el preview grande
-            // se actualice, aunque el preview grande suele escuchar 'estado_canal'.
-            // Si data.hls_url es la del programa, está bien para el preview principal.
             window.cameraPoller.syncPreview({ status: 'on_air', hls_url: data.hls_url });
           }, 200);
         }
         break;
 
       case 'camara_eliminada':
-        // Eliminar explícitamente
         const cardWrapper = document.querySelector(`.camera-wrapper[data-camera="${data.cam_index}"]`);
         if (cardWrapper) cardWrapper.remove();
         delete window.cameraPoller.lastState[data.cam_index];
         delete window.cameraPoller.allCameras[data.cam_index];
-        // Si no quedan cámaras, actualizar UI
         window.cameraPoller.syncCameras(window.cameraPoller.allCameras);
         break;
 
       case 'estado_canal':
-        // Estado del canal/preview
         const canalData = data.en_vivo ? { status: 'on_air', hls_url: data.hls_url } : null;
         window.cameraPoller.syncPreview(canalData);
         break;

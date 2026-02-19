@@ -1,6 +1,14 @@
 """
-FACEBOOK STREAMER - VERSION CON ASPECT RATIO CORRECTO
-Preserva la orientación original (horizontal o vertical)
+FACEBOOK STREAMER - V4 ULTRA ESTABLE
+Configuración ultra conservadora para evitar desconexiones a los 5 minutos.
+
+CAMBIOS CRÍTICOS:
+- Bitrate MÁS BAJO y ultra estable (2500k CBR)
+- FPS forzado a 25 constante
+- Keyframes cada 2 segundos EXACTOS
+- Buffer más grande para absorber fluctuaciones
+- Preset ultrafast (máxima velocidad)
+- Sin force_key_frames (puede causar problemas)
 """
 
 import logging
@@ -78,11 +86,19 @@ class FacebookStreamer(BaseStreamer):
     
     def build_ffmpeg_command(self, destination_url):
         """
-        Comando optimizado que PRESERVA aspect ratio original.
+        Comando ULTRA CONSERVADOR para Facebook.
         
-        CRITICO: No fuerza resolución, respeta la del source
+        OBJETIVO: Transmisión estable por HORAS sin desconexiones.
+        
+        CAMBIOS VS V3:
+        - Bitrate reducido: 2500k (más estable)
+        - Preset: ultrafast (era superfast)
+        - Sin force_key_frames (causaba problemas)
+        - FPS: -r 25 ANTES del input (más estable)
+        - Buffer más grande: 10000k
+        - vsync cfr (constant frame rate)
         """
-        logger.info("[FFMPEG] Construyendo comando")
+        logger.info("[FFMPEG] Construyendo comando ULTRA CONSERVADOR")
         logger.info("-" * 80)
         
         ffmpeg_path = settings.FFMPEG_BIN_PATH
@@ -94,75 +110,78 @@ class FacebookStreamer(BaseStreamer):
         logger.info(f"[DEST] {destination_url[:60]}...****")
         
         # ==========================================
-        # COMANDO OPTIMIZADO
+        # COMANDO ULTRA CONSERVADOR
         # ==========================================
         command = [
             ffmpeg_path,
             
-            # INPUT
+            # ==========================================
+            # INPUT - Con FPS forzado ANTES de leer
+            # ==========================================
+            '-re',              # 🔧 NUEVO: Read input at native frame rate
             '-i', rtmp_source,
             
             # ==========================================
-            # VIDEO - Recodificar SIN cambiar resolución
+            # VIDEO - Ultra conservador
             # ==========================================
             '-c:v', 'libx264',
             
-            # PRESET
-            '-preset', 'veryfast',
+            # 🔧 CRÍTICO: ultrafast (máxima velocidad)
+            '-preset', 'ultrafast',
             
-            # TUNE
             '-tune', 'zerolatency',
-            
-            # PIXEL FORMAT
             '-pix_fmt', 'yuv420p',
             
-            # BITRATE - MAS ALTO para horizontal
-            '-b:v', '4000k',
-            '-maxrate', '4000k',
-            '-bufsize', '8000k',
-            
-            # KEYFRAME INTERVAL
-            '-g', '60',
-            '-keyint_min', '60',
-            '-sc_threshold', '0',
-            
-            # FRAMERATE
-            '-r', '30',
+            # ==========================================
+            # BITRATE - MÁS BAJO para estabilidad
+            # ==========================================
+            '-b:v', '2500k',        # 🔧 Reducido de 3000k
+            '-maxrate', '2500k',    # 🔧 CBR perfecto
+            '-minrate', '2500k',    # 🔧 CBR perfecto
+            '-bufsize', '10000k',   # 🔧 Buffer MÁS GRANDE (era 6000k)
             
             # ==========================================
-            # CRITICO: NO forzar resolución
-            # Esto permite que horizontal sea horizontal
-            # y vertical sea vertical
+            # KEYFRAMES - Cada 2 segundos EXACTOS
             # ==========================================
-            # NO incluir -s (scale)
-            # NO incluir -vf scale
-            # Dejar que FFmpeg use la resolución original
+            '-g', '50',             # 50 frames a 25fps = 2 segundos
+            '-keyint_min', '50',    # Mínimo = máximo
+            '-sc_threshold', '0',   # Desactiva scene detection
+            # 🔧 SIN force_key_frames (puede causar problemas)
             
             # ==========================================
-            # AUDIO
+            # FRAMERATE - CRÍTICO
+            # ==========================================
+            '-r', '25',             # Output FPS
+            '-vsync', 'cfr',        # 🔧 NUEVO: Constant Frame Rate
+            
+            # ==========================================
+            # AUDIO - Copy
             # ==========================================
             '-c:a', 'copy',
             
             # ==========================================
-            # OUTPUT
+            # THREADING
+            # ==========================================
+            '-threads', '2',
+            
+            # ==========================================
+            # OUTPUT - Con opciones adicionales
             # ==========================================
             '-f', 'flv',
+            '-flvflags', 'no_duration_filesize',  # 🔧 NUEVO: Evita metadata problems
             
             destination_url
         ]
         
-        logger.info("[OK] Comando OPTIMIZADO:")
-        logger.info("  - Video: H.264 con aspect ratio ORIGINAL")
-        logger.info("  - Bitrate: 4000k (calidad alta)")
-        logger.info("  - Resolucion: SIN FORZAR (respeta source)")
-        logger.info("  - Horizontal: se mantiene horizontal")
-        logger.info("  - Vertical: se mantiene vertical")
+        logger.info("[OK] Comando ULTRA CONSERVADOR:")
+        logger.info("  ✅ Preset: ultrafast (máxima velocidad)")
+        logger.info("  ✅ Bitrate: 2500k CBR (ultra estable)")
+        logger.info("  ✅ FPS: 25 con vsync cfr (frame rate constante)")
+        logger.info("  ✅ Keyframes: cada 2 seg exactos")
+        logger.info("  ✅ Buffer: 10000k (grande para absorber fluctuaciones)")
+        logger.info("  ✅ -re: lectura a velocidad nativa")
+        logger.info("")
+        logger.info("OBJETIVO: Transmisión ESTABLE por 1+ hora sin cortes")
         logger.info("-" * 80)
-        logger.info("")
-        logger.info("IMPORTANTE:")
-        logger.info("  - Si ManyCam envia 1920x1080 -> Facebook recibe 1920x1080")
-        logger.info("  - Si ManyCam envia 720x1280 -> Facebook recibe 720x1280")
-        logger.info("  - Sin cortes, sin zoom forzado")
-        logger.info("")
         
         return command

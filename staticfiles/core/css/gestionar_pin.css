@@ -1,128 +1,125 @@
-/* === LAYOUT & ESPACIADO === */
+/* ======================================================
+   GESTIONAR PIN - ESTILO DARK PREMIUM
+====================================================== */
+
+/* Layout & Espaciado */
 .pin-page-container {
-    background-color: transparent !important; /* CORRECCIÓN: Fondo transparente para ver el degradado global */
-    min-height: calc(100vh - 70px); /* Restamos la altura del header para que no se estire de más */
     width: 100%;
-    /* Ajustamos el padding para centrarlo visualmente sin cortar el header */
-    padding-top: 4rem; 
-    padding-bottom: 2rem;
+    min-height: calc(100vh - 70px);
+    margin-top: 70px;
     display: flex;
     justify-content: center;
-    align-items: center; /* Centrado vertical */
-}
-.pin-content-wrapper {
-    width: 100%;
-    max-width: 500px; /* Ancho compacto estilo tarjeta de acceso */
+    align-items: flex-start; /* Alineado arriba para no centrar verticalmente si hay scroll */
+    padding: 4rem 2rem;
 }
 
-/* === ENCABEZADO === */
+.pin-content-wrapper {
+    width: 100%;
+    max-width: 480px;
+}
+
+/* Encabezado */
 .pin-header {
     text-align: center;
-    margin-bottom: 2rem;
+    margin-bottom: 2.5rem;
 }
 
 .page-title {
-    font-size: 2rem;
-    font-weight: 800;
-    margin-bottom: 0.5rem;
-    color: var(--text-white);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    text-shadow: 0 0 10px rgba(255,255,255,0.1);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--text-primary);
 }
 
 .page-subtitle {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
+    color: var(--text-tertiary);
+    font-size: 14px;
 }
 
-/* === TARJETA NEÓN === */
+/* Tarjeta Principal */
 .pin-card {
-    background: rgba(10, 14, 26, 0.9); /* Fondo oscuro semitransparente */
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--neon-red);
-    border-radius: 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl); /* 24px */
     padding: 2rem;
-    box-shadow: 0 0 20px rgba(239, 68, 68, 0.15); /* Glow rojo */
+    box-shadow: var(--shadow-lg);
     position: relative;
     overflow: hidden;
 }
 
-/* Header de la tarjeta */
+/* Header de la Tarjeta */
 .card-header-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.5rem;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
+    margin-bottom: 2rem;
     padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-subtle);
 }
 
 .section-subtitle {
     display: flex;
     align-items: center;
     gap: 10px;
-    font-weight: 700;
-    color: var(--brand-red);
-    font-size: 1.1rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 14px;
 }
+
+.section-subtitle svg { color: var(--brand-red); }
 
 .btn-back {
     display: flex;
     align-items: center;
     gap: 6px;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     text-decoration: none;
-    font-size: 0.85rem;
+    font-size: 12px;
     font-weight: 600;
     transition: color 0.2s;
-    text-transform: uppercase;
 }
-.btn-back:hover { color: var(--text-white); }
-.btn-back svg { width: 16px; height: 16px; }
+.btn-back:hover { color: var(--text-primary); }
+.btn-back svg { width: 14px; height: 14px; }
 
-/* === ESTADOS === */
+/* Estados */
 .status-indicator {
     display: inline-flex;
     align-items: center;
     gap: 8px;
     padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    font-weight: 800;
-    letter-spacing: 1px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
     margin-bottom: 1.5rem;
     text-transform: uppercase;
 }
 
 .status-indicator.active {
-    background: rgba(16, 185, 129, 0.2);
-    color: #34d399;
-    border: 1px solid #10b981;
-    box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
 .status-indicator.warning {
-    background: rgba(245, 158, 11, 0.2);
-    color: #fbbf24;
-    border: 1px solid #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.2);
 }
 
 .dot {
-    width: 8px; height: 8px;
+    width: 6px; height: 6px;
     background: currentColor;
     border-radius: 50%;
-    box-shadow: 0 0 5px currentColor;
 }
 
 /* Display del PIN */
 .current-pin-display {
-    background: rgba(0, 0, 0, 0.6);
+    background: #000;
     border: 1px solid var(--border-medium);
     padding: 1.5rem;
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -131,11 +128,10 @@
 
 .pin-text {
     font-family: 'Courier New', monospace;
-    font-size: 1.8rem;
+    font-size: 24px;
     letter-spacing: 4px;
-    color: var(--text-white);
-    font-weight: 700;
-    text-shadow: 0 0 5px rgba(255,255,255,0.5);
+    color: var(--text-primary);
+    font-weight: 600;
 }
 
 .hidden { display: none !important; }
@@ -143,132 +139,145 @@
 /* Botón Ojo */
 .btn-icon-action {
     background: transparent;
-    border: 1px solid var(--border-subtle);
+    border: 1px solid var(--border-medium);
     color: var(--text-secondary);
     cursor: pointer;
-    padding: 8px;
-    border-radius: 6px;
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
     transition: all 0.2s;
 }
 .btn-icon-action:hover { 
-    background: rgba(255,255,255,0.1); 
-    color: var(--text-white);
-    border-color: var(--text-white);
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--text-secondary);
 }
-.btn-icon-action svg { width: 20px; height: 20px; }
+.btn-icon-action svg { width: 18px; height: 18px; }
 
-/* === BOTONES === */
+/* Botones */
 .action-row { text-align: right; }
 
 .btn-secondary {
     background: transparent;
-    border: 1px solid var(--text-muted);
-    color: var(--text-muted);
-    padding: 0.6rem 1.2rem;
-    border-radius: 6px;
-    font-weight: 700;
+    border: 1px solid var(--border-medium);
+    color: var(--text-secondary);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: 600;
     cursor: pointer;
-    text-transform: uppercase;
-    font-size: 0.8rem;
-    letter-spacing: 1px;
+    font-size: 13px;
     transition: all 0.2s;
 }
 .btn-secondary:hover { 
-    border-color: var(--text-white); 
-    color: var(--text-white); 
-    box-shadow: 0 0 8px rgba(255,255,255,0.2);
+    border-color: var(--text-primary); 
+    color: var(--text-primary);
+    background: var(--bg-hover);
 }
 
 .btn-primary, .btn-save {
     background: var(--brand-red);
     color: white;
-    border: 1px solid var(--brand-red);
-    padding: 0.8rem 1.5rem;
-    border-radius: 6px;
-    font-weight: 700;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
     cursor: pointer;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    font-size: 13px;
     transition: all 0.2s;
-    box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+    width: 100%;
 }
 .btn-primary:hover, .btn-save:hover { 
-    background: var(--brand-red-dark); 
-    box-shadow: 0 0 15px rgba(239, 68, 68, 0.6);
+    background: var(--brand-red-hover); 
+    box-shadow: var(--shadow-md);
 }
 
 .empty-state-text {
-    color: var(--text-secondary);
+    color: var(--text-tertiary);
     margin-bottom: 1.5rem;
-    line-height: 1.5;
+    font-size: 13px;
+    line-height: 1.6;
 }
 
-/* === FORMULARIO === */
+/* Formulario */
 .section-divider {
     height: 1px;
-    background: linear-gradient(90deg, transparent, var(--border-medium), transparent);
+    background: var(--border-subtle);
     margin: 2rem 0;
 }
 
 .form-title {
-    color: var(--text-white);
+    color: var(--text-primary);
     margin-bottom: 1rem;
-    font-size: 1.1rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-secondary);
+    font-size: 12px;
 }
 
 .settings-input {
     width: 100%;
-    background: rgba(0, 0, 0, 0.5); 
+    background: var(--bg-primary);
     border: 1px solid var(--border-medium);
-    color: var(--text-white);
-    padding: 1rem;
-    border-radius: 6px;
-    font-size: 1.1rem;
+    color: var(--text-primary);
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 18px;
     text-align: center;
     letter-spacing: 3px;
-    margin-top: 0.5rem;
+    margin-bottom: 8px;
 }
 .settings-input:focus {
     border-color: var(--brand-red);
-    box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
     outline: none;
+    box-shadow: 0 0 0 2px rgba(255, 62, 62, 0.1);
+}
+
+.form-group small {
+    display: block;
+    color: var(--text-tertiary);
+    font-size: 11px;
+    text-align: center;
 }
 
 .form-actions {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     margin-top: 1.5rem;
-    gap: 1rem;
+    gap: 12px;
 }
 
 .btn-ghost {
     background: transparent;
     color: var(--text-secondary);
     border: none;
+    padding: 10px 16px;
     cursor: pointer;
-    text-transform: uppercase;
-    font-weight: 700;
-    font-size: 0.8rem;
+    font-weight: 600;
+    font-size: 13px;
 }
-.btn-ghost:hover { color: var(--text-white); text-decoration: underline; }
+.btn-ghost:hover { color: var(--text-primary); }
 
-/* === MENSAJES === */
+/* Mensajes */
 .status-message {
-    padding: 10px;
-    border-radius: 6px;
-    margin-bottom: 1rem;
-    font-size: 0.9rem;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    font-size: 13px;
     text-align: center;
+    font-weight: 500;
 }
 .status-message.success {
-    background: rgba(16, 185, 129, 0.2);
-    color: #34d399;
-    border: 1px solid #10b981;
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.2);
 }
 .status-message.error {
-    background: rgba(239, 68, 68, 0.2);
-    color: #ff8888;
-    border: 1px solid var(--brand-red);
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--brand-red);
+    border: 1px solid rgba(239, 68, 68, 0.2);
 }

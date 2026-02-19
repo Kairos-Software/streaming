@@ -1,13 +1,15 @@
 """
 BASE STREAMER - Clase abstracta base para todas las plataformas
 
-Esta es la "plantilla" que todas las plataformas deben seguir.
-Define QUÉ métodos debe tener cada plataforma, pero no CÓMO implementarlos.
+ARREGLO CRÍTICO:
+- Los logs de FFmpeg van a archivo (/tmp/ffmpeg_*.log)
+- NO usa PIPE que se puede llenar y bloquear FFmpeg
 """
 
 from abc import ABC, abstractmethod
 import subprocess
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -15,9 +17,6 @@ logger = logging.getLogger(__name__)
 class BaseStreamer(ABC):
     """
     Clase base abstracta para gestionar transmisiones a plataformas externas.
-    
-    Toda plataforma (YouTube, Facebook, Twitch, etc.) debe heredar de esta clase
-    e implementar los métodos abstractos.
     """
     
     # Nombre de la plataforma (ej: "youtube", "facebook")
@@ -34,19 +33,16 @@ class BaseStreamer(ABC):
         self.user = user
         self.source_url = source_url
         self.process = None  # Proceso FFmpeg (se crea al iniciar)
+        self.log_file = None  # Archivo de log
     
     # =========================================
     # MÉTODOS ABSTRACTOS (obligatorios)
-    # Cada plataforma DEBE implementar estos
     # =========================================
     
     @abstractmethod
     def get_rtmp_destination_url(self):
         """
         Construye la URL RTMP de destino de la plataforma.
-        
-        Ejemplo YouTube: rtmp://a.rtmp.youtube.com/live2/{stream_key}
-        Ejemplo Facebook: rtmps://live-api-s.facebook.com:443/rtmp/{stream_key}
         
         Returns:
             str: URL RTMP completa
@@ -61,26 +57,18 @@ class BaseStreamer(ABC):
         """
         Construye el comando FFmpeg específico de la plataforma.
         
-        Cada plataforma tiene requisitos diferentes:
-        - YouTube: acepta H.264 con ciertos parámetros
-        - Facebook: puede requerir diferentes codecs o bitrates
-        
         Args:
             destination_url (str): URL RTMP de destino
         
         Returns:
-            list: Lista con el comando FFmpeg (ej: ['ffmpeg', '-i', '...'])
+            list: Lista con el comando FFmpeg
         """
         pass
     
     @abstractmethod
     def validate_account_credentials(self):
         """
-        Valida que el usuario tenga credenciales configuradas para esta plataforma.
-        
-        Ejemplo:
-            - YouTube: verificar que existe CuentaYouTube con clave activa
-            - Facebook: verificar que existe CuentaFacebook con token válido
+        Valida que el usuario tenga credenciales configuradas.
         
         Raises:
             ValueError: Si no hay cuenta configurada o está inactiva
@@ -88,18 +76,16 @@ class BaseStreamer(ABC):
         pass
     
     # =========================================
-    # MÉTODOS COMUNES (heredados por todos)
+    # MÉTODOS COMUNES
     # =========================================
     
     def start(self):
         """
         Inicia la transmisión a la plataforma.
         
-        Proceso:
-        1. Valida credenciales
-        2. Obtiene URL de destino
-        3. Construye comando FFmpeg
-        4. Ejecuta proceso
+        ARREGLO CRÍTICO:
+        - Usa archivo de log en lugar de PIPE
+        - Evita que FFmpeg se bloquee cuando el pipe se llena
         
         Returns:
             subprocess.Popen: Proceso FFmpeg en ejecución
@@ -123,31 +109,45 @@ class BaseStreamer(ABC):
         logger.info(f"🔧 Comando FFmpeg COMPLETO:")
         logger.info(f"   {' '.join(command)}")
         
-        # 5. Iniciar proceso SIN archivos de log (stdout/stderr en tiempo real)
-        import os
+        # 5. Crear archivo de log
+        # CRÍTICO: Escribir a archivo en lugar de PIPE
+        log_dir = '/tmp/ffmpeg_logs'
+        os.makedirs(log_dir, exist_ok=True)
         
+        log_filename = f"ffmpeg_{self.PLATFORM_NAME}_{self.user.username}.log"
+        log_path = os.path.join(log_dir, log_filename)
+        
+        self.log_file = open(log_path, 'w')
+        
+        logger.info(f"📝 Logs FFmpeg: {log_path}")
+        
+        # 6. Iniciar proceso CON ARCHIVO DE LOG
         self.process = subprocess.Popen(
             command,
             stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stdout=self.log_file,  # ✅ Archivo en lugar de PIPE
+            stderr=subprocess.STDOUT,  # Combinar stderr con stdout
             universal_newlines=True,
             creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
         )
         
         logger.info(f"✅ Proceso FFmpeg iniciado (PID: {self.process.pid})")
         
-        # 6. Verificar si el proceso murió inmediatamente
+        # 7. Verificar si el proceso murió inmediatamente
         import time
-        time.sleep(0.5)  # Esperar medio segundo
+        time.sleep(1)  # Esperar 1 segundo
         
         if self.process.poll() is not None:
-            # El proceso terminó inmediatamente - hay un error
-            stdout, stderr = self.process.communicate()
-            error_msg = stderr if stderr else stdout
+            # El proceso terminó - leer error del archivo
+            self.log_file.close()
+            
+            with open(log_path, 'r') as f:
+                error_msg = f.read()
+            
             logger.error(f"❌ FFmpeg falló inmediatamente:")
-            logger.error(f"   {error_msg}")
-            raise Exception(f"FFmpeg falló al iniciar: {error_msg[:500]}")
+            logger.error(f"   {error_msg[-1000:]}")  # Últimas 1000 chars
+            
+            raise Exception(f"FFmpeg falló al iniciar. Ver: {log_path}")
         
         logger.info(f"✅ FFmpeg corriendo correctamente")
         
@@ -156,9 +156,6 @@ class BaseStreamer(ABC):
     def stop(self):
         """
         Detiene la transmisión de forma ordenada.
-        
-        Intenta terminar el proceso con SIGTERM primero,
-        y si no responde en 5 segundos, lo fuerza con SIGKILL.
         """
         if not self.process:
             logger.warning(f"⚠️ No hay proceso activo para {self.PLATFORM_NAME}")
@@ -166,19 +163,26 @@ class BaseStreamer(ABC):
         
         if self.process.poll() is not None:
             logger.info(f"ℹ️ Proceso ya estaba detenido (PID: {self.process.pid})")
+            # Cerrar archivo de log si está abierto
+            if self.log_file and not self.log_file.closed:
+                self.log_file.close()
             return
         
         logger.info(f"🛑 Deteniendo transmisión a {self.PLATFORM_NAME} (PID: {self.process.pid})")
         
         try:
-            self.process.terminate()  # SIGTERM (cierre ordenado)
+            self.process.terminate()  # SIGTERM
             self.process.wait(timeout=5)
             logger.info(f"✅ Proceso detenido correctamente")
         except subprocess.TimeoutExpired:
             logger.warning(f"⚠️ Proceso no respondió, forzando cierre...")
-            self.process.kill()  # SIGKILL (cierre forzado)
+            self.process.kill()  # SIGKILL
             self.process.wait()
             logger.info(f"✅ Proceso forzado a detenerse")
+        finally:
+            # Cerrar archivo de log
+            if self.log_file and not self.log_file.closed:
+                self.log_file.close()
     
     def is_running(self):
         """

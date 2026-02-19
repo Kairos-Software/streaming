@@ -1,0 +1,291 @@
+/* =========================================
+   MULTISTREAM PANEL STYLES
+   Estilos exclusivos de retransmisión
+   ========================================= */
+
+/* Botón de Retransmitir en Preview Controls */
+.btn-restream {
+    background: rgba(139, 92, 246, 0.1);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    color: #a78bfa;
+}
+.btn-restream:hover { 
+    background: rgba(139, 92, 246, 0.2); 
+    color: #fff; 
+}
+
+/* Panel de Estado de Retransmisión */
+.restream-status-panel {
+    padding: 12px 20px;
+    background: rgba(139, 92, 246, 0.05);
+    border-bottom: 1px solid rgba(139, 92, 246, 0.1);
+}
+
+.restream-status-header { 
+    display: flex; 
+    align-items: center; 
+    gap: 8px; 
+    font-size: 11px; 
+    font-weight: 700; 
+    color: #a78bfa; 
+    text-transform: uppercase; 
+    margin-bottom: 8px; 
+}
+
+.restream-platforms-active { 
+    display: flex; 
+    flex-wrap: wrap; 
+    gap: 8px; 
+}
+
+.restream-platform-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #a78bfa;
+}
+
+.platform-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #6b7280;
+}
+
+.platform-status-dot.streaming {
+    background: #10b981;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.platform-status-dot.error {
+    background: #ef4444;
+}
+
+.platform-badge-name {
+    flex: 1;
+}
+
+.platform-stop-btn {
+    background: none;
+    border: none;
+    color: #ef4444;
+    cursor: pointer;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    transition: all 0.2s;
+}
+
+.platform-stop-btn:hover {
+    color: #ff0000;
+    transform: scale(1.1);
+}
+
+/* Modal de Retransmisión */
+.restream-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+}
+
+.restream-modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(4px);
+}
+
+.restream-modal-content {
+    position: relative;
+    background: #13151a;
+    border: 1px solid var(--border-medium);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+    border-radius: 20px;
+    padding: 0;
+    overflow: hidden;
+    max-width: 500px;
+    width: 95%;
+    animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes modalPop {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.modal-header {
+    background: #0d0e12;
+    padding: 20px;
+    border-bottom: 1px solid var(--border-medium);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: white;
+    margin: 0;
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.platform-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.platform-option {
+    position: relative;
+    cursor: pointer;
+}
+
+.platform-option input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.platform-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.03);
+    border: 2px solid var(--border-medium);
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.2s ease;
+    height: 100px;
+}
+
+.platform-icon { 
+    font-size: 28px; 
+    opacity: 0.7; 
+    transition: all 0.2s; 
+    color: var(--text-secondary); 
+}
+
+.platform-name { 
+    font-size: 13px; 
+    font-weight: 600; 
+    color: var(--text-secondary); 
+}
+
+/* Selected States */
+.platform-option input:checked + .platform-card {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: white;
+    box-shadow: 0 0 15px rgba(255,255,255,0.05);
+}
+
+.platform-option input:checked + .platform-card .platform-name { 
+    color: white; 
+}
+
+.platform-option input:checked + .platform-card .platform-icon { 
+    opacity: 1; 
+    transform: scale(1.1); 
+    color: white; 
+}
+
+/* Brand Colors */
+.platform-option.youtube input:checked + .platform-card { 
+    border-color: #ff0000; 
+    background: rgba(255, 0, 0, 0.1); 
+}
+.platform-option.youtube input:checked + .platform-card .platform-icon { 
+    color: #ff0000; 
+}
+
+.platform-option.facebook input:checked + .platform-card { 
+    border-color: #1877f2; 
+    background: rgba(24, 119, 242, 0.1); 
+}
+.platform-option.facebook input:checked + .platform-card .platform-icon { 
+    color: #1877f2; 
+}
+
+.platform-option.twitch input:checked + .platform-card { 
+    border-color: #9146ff; 
+    background: rgba(145, 70, 255, 0.1); 
+}
+.platform-option.twitch input:checked + .platform-card .platform-icon { 
+    color: #9146ff; 
+}
+
+.platform-option.instagram input:checked + .platform-card { 
+    border-color: #e4405f; 
+    background: rgba(228, 64, 95, 0.1); 
+}
+.platform-option.instagram input:checked + .platform-card .platform-icon { 
+    color: #e4405f; 
+}
+
+/* Modal Actions */
+.modal-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.btn-modal-cancel {
+    flex: 1;
+    padding: 12px;
+    border-radius: 10px;
+    background: transparent;
+    border: 1px solid var(--border-medium);
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-modal-cancel:hover { 
+    border-color: var(--text-primary); 
+    color: white; 
+    background: rgba(255,255,255,0.05); 
+}
+
+.btn-modal-start {
+    flex: 2;
+    padding: 12px;
+    border-radius: 10px;
+    background: var(--brand-red);
+    color: white;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 15px rgba(255, 62, 62, 0.3);
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+}
+
+.btn-modal-start:hover { 
+    background: #ff2020; 
+    transform: translateY(-1px); 
+}
+
+.btn-modal-start:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
