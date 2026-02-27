@@ -1,7 +1,7 @@
 """
 FACEBOOK STREAMER - V_HLS_MIXED
-Video: copy (sin recodificar, rápido)
-Audio: recodificado con aresample para suavizar discontinuidades del switch
+Video: copy
+Audio: aresample=async=1000
 """
 import logging
 from django.conf import settings
@@ -40,24 +40,17 @@ class FacebookStreamer(BaseStreamer):
 
         command = [
             ffmpeg_path,
-
             '-fflags', '+genpts+discardcorrupt',
             '-live_start_index', '-1',
             '-i', hls_source,
-
-            # Video sin recodificar - rápido y sin problemas de timestamps
             '-c:v', 'copy',
-
-            # Audio recodificado para suavizar discontinuidades del switch
             '-c:a', 'aac',
             '-af', 'aresample=async=1000',
             '-b:a', '128k',
             '-ar', '44100',
             '-ac', '2',
-
             '-f', 'flv',
             '-flvflags', 'no_duration_filesize',
-
             destination_url
         ]
 
