@@ -717,3 +717,29 @@ svg { display: block; }
     .control-header-container { grid-template-columns: 1fr; height: auto; gap: 12px; padding: 12px 1rem; }
     .header-main-nav { display: none; } 
 }
+
+/* Agregar a base.css o al CSS del panel */
+
+.btn-radio {
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  color: #a78bfa;
+  transition: all 0.2s ease;
+}
+
+.btn-radio:hover {
+  background: rgba(139, 92, 246, 0.3);
+  border-color: #a78bfa;
+}
+
+.btn-radio-activo {
+  background: rgba(239, 68, 68, 0.15) !important;
+  border-color: rgba(239, 68, 68, 0.5) !important;
+  color: #f87171 !important;
+  animation: radio-pulse 2s ease-in-out infinite;
+}
+
+@keyframes radio-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3); }
+  50%       { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+}

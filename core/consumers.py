@@ -38,7 +38,7 @@ class PanelConsumer(AsyncJsonWebsocketConsumer):
             "cam_index": event.get("cam_index"),
             "estado": event.get("estado"),
             "authorized": event.get("authorized"),
-            "hls_url": event.get("hls_url"),  # consistente con el front
+            "hls_url": event.get("hls_url"),
         })
 
     async def camara_eliminada(self, event):
@@ -51,5 +51,19 @@ class PanelConsumer(AsyncJsonWebsocketConsumer):
         await self.send_json({
             "tipo": "estado_canal",
             "en_vivo": event.get("en_vivo", False),
-            "hls_url": event.get("hls_url"),  # corregido: antes era url_hls
+            "hls_url": event.get("hls_url"),
+        })
+
+    # ======================
+    # MODO RADIO (NUEVO)
+    # ======================
+
+    async def modo_radio_cambio(self, event):
+        """
+        Recibe el evento desde views_radio._notificar_modo_radio()
+        y lo reenvía al browser del operador.
+        """
+        await self.send_json({
+            "tipo": "modo_radio_cambio",
+            "modo_radio": event.get("modo_radio", False),
         })

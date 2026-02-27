@@ -29,7 +29,6 @@ ALLOWED_HOSTS = [h.strip() for h in os.getenv(
     "127.0.0.1,localhost"
 ).split(",") if h]
 
-# CSRF
 raw_origins = os.getenv("CSRF_TRUSTED_ORIGINS", "")
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in raw_origins.split(",") if o]
 
@@ -159,10 +158,10 @@ DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 # ======================================================
 STREAMING_MODE = os.getenv("STREAMING_MODE", "local")
 
-HLS_SERVER_URL_HTTP = os.getenv("HLS_SERVER_URL_HTTP")
+HLS_SERVER_URL_HTTP  = os.getenv("HLS_SERVER_URL_HTTP")
 HLS_SERVER_URL_HTTPS = os.getenv("HLS_SERVER_URL_HTTPS")
-HLS_PATH = os.getenv("HLS_PATH")
-HLS_PROGRAM_PATH = os.path.join(HLS_PATH, "program")
+HLS_PATH             = os.getenv("HLS_PATH")
+HLS_PROGRAM_PATH     = os.path.join(HLS_PATH, "program")
 
 def get_hls_base_url():
     if STREAMING_MODE == "production" and HLS_SERVER_URL_HTTPS:
@@ -174,22 +173,18 @@ HLS_BASE_URL = get_hls_base_url()
 # ======================================================
 # RTMP / FFMPEG
 # ======================================================
-FFMPEG_BIN_PATH = os.getenv("FFMPEG_BIN_PATH", "ffmpeg")
-RTMP_SERVER_HOST_PUBLIC = os.getenv("RTMP_SERVER_HOST_PUBLIC", "127.0.0.1")
-RTMP_SERVER_PORT = int(os.getenv("RTMP_SERVER_PORT", "9000"))
-RTMP_SERVER_HOST_INTERNAL = os.getenv("RTMP_SERVER_HOST_INTERNAL", "127.0.0.1")
-RTMP_SERVER_PORT_INTERNAL = int(os.getenv("RTMP_SERVER_PORT_INTERNAL", "9000"))
+FFMPEG_BIN_PATH            = os.getenv("FFMPEG_BIN_PATH", "ffmpeg")
+RTMP_SERVER_HOST_PUBLIC    = os.getenv("RTMP_SERVER_HOST_PUBLIC",   "127.0.0.1")
+RTMP_SERVER_PORT           = int(os.getenv("RTMP_SERVER_PORT",      "9000"))
+RTMP_SERVER_HOST_INTERNAL  = os.getenv("RTMP_SERVER_HOST_INTERNAL", "127.0.0.1")
+RTMP_SERVER_PORT_INTERNAL  = int(os.getenv("RTMP_SERVER_PORT_INTERNAL", "9000"))
 
 # ======================================================
-# LOGGING - ⚡ VERSIÓN CORREGIDA ⚡
+# LOGGING
 # ======================================================
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    
-    # ==========================================
-    # FORMATTERS - Cómo se ven los logs
-    # ==========================================
     "formatters": {
         "verbose": {
             "format": "[{levelname}] {asctime} {module}.{funcName} - {message}",
@@ -201,19 +196,12 @@ LOGGING = {
             "style": "{",
         },
     },
-    
-    # ==========================================
-    # HANDLERS - Dónde van los logs
-    # ==========================================
     "handlers": {
-        # Handler para consola (lo que ves en el terminal)
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "verbose",
             "level": "INFO",
         },
-        
-        # Handler para archivo (opcional - para debugging)
         "file": {
             "level": "DEBUG",
             "class": "logging.FileHandler",
@@ -221,36 +209,23 @@ LOGGING = {
             "formatter": "verbose",
         },
     },
-    
-    # ==========================================
-    # LOGGERS - Qué se loguea
-    # ==========================================
     "loggers": {
-        # ⭐ Logger para MULTISTREAM (esto es lo que faltaba!)
         "multistream": {
-            "handlers": ["console", "file"],  # Consola Y archivo
-            "level": "INFO",  # Cambiar a DEBUG si necesitas más detalle
+            "handlers": ["console", "file"],
+            "level": "INFO",
             "propagate": False,
         },
-        
-        # Logger para CORE (tu otra app)
         "core": {
             "handlers": ["console", "file"],
             "level": "DEBUG",
             "propagate": False,
         },
-        
-        # Logger para Django general
         "django": {
             "handlers": ["console", "file"],
             "level": "INFO",
             "propagate": False,
         },
     },
-    
-    # ==========================================
-    # ROOT - Logger por defecto
-    # ==========================================
     "root": {
         "handlers": ["console"],
         "level": "WARNING",
@@ -269,3 +244,11 @@ print("HLS_BASE_URL:", HLS_BASE_URL)
 print("RTMP_PUBLIC:", RTMP_SERVER_HOST_PUBLIC, RTMP_SERVER_PORT)
 print("RTMP_INTERNAL:", RTMP_SERVER_HOST_INTERNAL, RTMP_SERVER_PORT_INTERNAL)
 print("==================")
+
+# ======================================================
+# MODO RADIO
+# ======================================================
+RADIO_IMAGE_PATH = os.getenv(
+    "RADIO_IMAGE_PATH",
+    str(BASE_DIR / "core" / "static" / "core" / "images" / "radio_en_vivo.jpeg")
+)

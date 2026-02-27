@@ -30,6 +30,10 @@ def detener_transmision_usuario(user):
     # 1️⃣ Detener FFmpeg (HLS + feeder)
     stop_program_hls(user)
 
+    # 1b. Detener feeder de radio si estaba activo
+    from core.services.radio_manager import stop_radio_feeder
+    stop_radio_feeder(user)
+
     # 2️⃣ Limpiar HLS del usuario
     limpiar_hls_usuario(user.username)
 
@@ -48,12 +52,13 @@ def detener_transmision_usuario(user):
     for idx in indices:
         notificar_actualizacion_camara(user, idx)
 
-    # 4️⃣ Apagar canal
+    # 4️⃣ Apagar canal (y resetear modo_radio)
     canal, _ = CanalTransmision.objects.get_or_create(usuario=user)
     canal.en_vivo = False
     canal.inicio_transmision = None
     canal.url_hls = ""
-    canal.save(update_fields=["en_vivo", "inicio_transmision", "url_hls"])
+    canal.modo_radio = False
+    canal.save(update_fields=["en_vivo", "inicio_transmision", "url_hls", "modo_radio"])
 
     # 5️⃣ Notificar frontend
     notificar_estado_canal(user)

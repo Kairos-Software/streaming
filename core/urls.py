@@ -1,6 +1,7 @@
 from django.urls import path
-from django.contrib.auth import views as auth_views  # <--- Importante para el cambio de contraseña
+from django.contrib.auth import views as auth_views
 from . import views
+from . import views_radio  # ← agregar este import
 
 urlpatterns = [
     # --- AUTENTICACIÓN Y HOME ---
@@ -8,20 +9,17 @@ urlpatterns = [
     path("", views.home, name="home"),
     path("logout/", views.logout_view, name="logout"),
     
-    # --- RECUPERACIÓN DE CONTRASEÑA (NUEVO) ---
+    # --- RECUPERACIÓN DE CONTRASEÑA ---
     path('reset/password_reset/', auth_views.PasswordResetView.as_view(
         template_name='registration/password_reset_form.html',
-        html_email_template_name='registration/password_reset_email.html',  # <--- Para que el email sea HTML bonito
+        html_email_template_name='registration/password_reset_email.html',
     ), name='password_reset'),
-    
     path('reset/password_reset_done/', auth_views.PasswordResetDoneView.as_view(
         template_name='registration/password_reset_done.html'
     ), name='password_reset_done'),
-    
     path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(
         template_name='registration/password_reset_confirm.html'
     ), name='password_reset_confirm'),
-    
     path('reset/done/', auth_views.PasswordResetCompleteView.as_view(
         template_name='registration/password_reset_complete.html'
     ), name='password_reset_complete'),
@@ -46,17 +44,12 @@ urlpatterns = [
     path("usuarios/<int:pk>/editar/", views.editar_usuario, name="editar_usuario"),
     path("usuarios/<int:pk>/eliminar/", views.eliminar_usuario, name="eliminar_usuario"),
 
-    # --- STREAMING (SISTEMA DE SEGURIDAD CON PIN) ---
-    # 1. Comunicación con Nginx (Automática)
+    # --- STREAMING ---
     path("validar-publicacion/", views.validar_publicacion, name="validar_publicacion"),
     path("stream-finalizado/", views.stream_finalizado, name="stream_finalizado"),
-
-    # 2. Gestión desde la Web (Frontend y PIN)
     path("estado-camaras/", views.estado_camaras, name="estado_camaras"),
     path("autorizar-camara/<int:cam_index>/", views.autorizar_camara, name="autorizar_camara"),
     path("rechazar-camara/<int:cam_index>/", views.rechazar_camara, name="rechazar_camara"),
-    
-    # --- RUTAS NUEVAS PARA FFMPEG ---
     path("poner-al-aire/<int:cam_index>/", views.poner_al_aire, name="poner_al_aire"),
     path("detener-transmision/", views.detener_transmision, name="detener_transmision"),
     path("cerrar-camara/<int:cam_index>/", views.cerrar_camara, name="cerrar_camara"),
@@ -65,4 +58,9 @@ urlpatterns = [
     path("audio/", views.audio, name="audio"),
     path("tutorial/", views.tutorial, name="tutorial"),
     path("autorizar-program-switch/", views.autorizar_program_switch),
+
+    # --- MODO RADIO ---
+    path('radio/activar/',    views_radio.activar_modo_radio,   name='radio_activar'),
+    path('radio/desactivar/', views_radio.desactivar_modo_radio, name='radio_desactivar'),
+    path('radio/estado/',     views_radio.estado_modo_radio,     name='radio_estado'),
 ]

@@ -95,6 +95,27 @@ class CanalTransmision(models.Model):
 
     actualizado_en = models.DateTimeField(auto_now=True)
 
+    # --- MODO RADIO (NUEVO) ---
+    modo_radio = models.BooleanField(default=False)
+    radio_imagen_path = models.CharField(
+        max_length=500,
+        blank=True,
+        default='',
+        help_text='Ruta absoluta a imagen JPG. Vacío = usar RADIO_IMAGE_PATH de settings.'
+    )
+
+    def get_imagen_radio(self):
+        from django.conf import settings
+        return self.radio_imagen_path or getattr(settings, 'RADIO_IMAGE_PATH', '')
+
+    def activar_modo_radio(self):
+        self.modo_radio = True
+        self.save(update_fields=['modo_radio'])
+
+    def desactivar_modo_radio(self):
+        self.modo_radio = False
+        self.save(update_fields=['modo_radio'])
+
     def __str__(self):
         estado = "EN VIVO" if self.en_vivo else "OFFLINE"
         return f"{self.usuario.username} - {estado}"

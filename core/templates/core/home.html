@@ -141,6 +141,17 @@
                 </svg>
                 Retransmitir
               </button>
+
+              <!-- ═══════════════════════════════════════════════
+                   NUEVO: Botón Modo Radio
+                   Empieza oculto. radio_mode.js lo muestra
+                   solo cuando el canal está en vivo.
+              ════════════════════════════════════════════════ -->
+              <button id="btnRadioMode" class="btn-control btn-radio" style="display: none;"
+                      title="Activar modo radio (imagen estática + audio en vivo)">
+                <span id="btnRadioText">Modo Radio</span>
+              </button>
+
             </div>
 
             <div class="volume-control">
@@ -229,4 +240,7 @@
 
 <!-- MULTISTREAM_PANEL.JS (nuevo - separado para organización) -->
 <script src="{% static 'multistream/js/multistream_panel.js' %}"></script>
+
+<!-- RADIO_MODE.JS (nuevo - modo radio, no toca lo anterior) -->
+<script src="{% static 'core/js/radio_mode.js' %}"></script>
 {% endblock %}
