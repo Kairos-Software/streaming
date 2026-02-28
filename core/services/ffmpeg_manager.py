@@ -1,14 +1,14 @@
 """
-FFMPEG MANAGER - V_QUALITY
-Basado en V_STABLE con un solo cambio: calidad del HLS maestro mejorada.
+FFMPEG MANAGER - V_AUDIO_FIXED
+Basado en V_QUALITY pero con audio corregido.
 
-CAMBIO respecto a V_STABLE:
-- HLS maestro: bitrate subido de 2500k a 4000k para mejor calidad 720p
-- Todo lo demás idéntico a V_STABLE que funciona bien
+CAMBIOS respecto a V_QUALITY:
+- ELIMINADO use_wallclock_as_timestamps (causaba audio rayado)
+- AGREGADO aresample=async para sincronización de audio
+- HLS maestro mantiene bitrate 4000k para calidad 720p
 
 NO TOCAR:
-- Feeder sigue con ultrafast/2500k (su trabajo es velocidad, no calidad)
-- use_wallclock_as_timestamps en ambos (necesario para switch sin corte)
+- Feeder sigue con ultrafast/2500k (velocidad)
 - letterbox en feeder (preserva aspect ratio)
 - _kill_after_delay de 2s en feeder (overlap para switch suave)
 """
@@ -43,9 +43,10 @@ def start_program_hls(user):
 
     cmd = [
         FFMPEG_BIN,
+        # ========== INPUT (SIN use_wallclock) ==========
         "-fflags", "+genpts+discardcorrupt",
-        "-use_wallclock_as_timestamps", "1",
         "-i", f"rtmp://{RTMP_HOST}:{RTMP_PORT}/program_switch/{user.username}",
+        # ========== VIDEO ==========
         "-c:v", "libx264",
         "-preset", "veryfast",
         "-tune", "zerolatency",
@@ -57,10 +58,13 @@ def start_program_hls(user):
         "-b:v", "4000k",
         "-maxrate", "4000k",
         "-bufsize", "8000k",
+        # ========== AUDIO (CORREGIDO) ==========
         "-c:a", "aac",
         "-b:a", "128k",
         "-ar", "44100",
         "-ac", "2",
+        "-af", "aresample=async=1:first_pts=0",  # ← NUEVO: Sincronización
+        # ========== HLS OUTPUT ==========
         "-f", "hls",
         "-hls_time", "2",
         "-hls_list_size", "15",
@@ -120,9 +124,10 @@ def switch_program_camera(user, stream_key):
 
     feeder_cmd = [
         FFMPEG_BIN,
+        # ========== INPUT (SIN use_wallclock) ==========
         "-fflags", "+genpts",
-        "-use_wallclock_as_timestamps", "1",
         "-i", input_rtmp,
+        # ========== VIDEO ==========
         "-c:v", "libx264",
         "-preset", "ultrafast",
         "-tune", "zerolatency",
@@ -136,12 +141,15 @@ def switch_program_camera(user, stream_key):
         "-b:v", "2500k",
         "-maxrate", "2500k",
         "-bufsize", "5000k",
+        # ========== AUDIO (CORREGIDO) ==========
         "-c:a", "aac",
         "-b:a", "128k",
         "-ar", "44100",
         "-ac", "2",
+        "-af", "aresample=async=1:first_pts=0",  # ← NUEVO: Sincronización
         "-map", "0:v:0",
         "-map", "0:a:0",
+        # ========== OUTPUT ==========
         "-f", "flv",
         output_rtmp,
     ]

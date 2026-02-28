@@ -34,7 +34,7 @@ class FacebookStreamer(BaseStreamer):
 
     def build_ffmpeg_command(self, destination_url):
         ffmpeg_path = settings.FFMPEG_BIN_PATH
-        hls_source = f"http://127.0.0.1:9080/hls/program/{self.user.username}.m3u8"
+        hls_source = f"http://127.0.0.1:8080/hls/program/{self.user.username}.m3u8"
 
         logger.info(f"[FACEBOOK] Source HLS: {hls_source}")
 

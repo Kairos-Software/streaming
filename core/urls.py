@@ -2,6 +2,8 @@ from django.urls import path
 from django.contrib.auth import views as auth_views
 from . import views
 from . import views_radio  # ← agregar este import
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     # --- AUTENTICACIÓN Y HOME ---
@@ -60,7 +62,11 @@ urlpatterns = [
     path("autorizar-program-switch/", views.autorizar_program_switch),
 
     # --- MODO RADIO ---
-    path('radio/activar/',    views_radio.activar_modo_radio,   name='radio_activar'),
-    path('radio/desactivar/', views_radio.desactivar_modo_radio, name='radio_desactivar'),
-    path('radio/estado/',     views_radio.estado_modo_radio,     name='radio_estado'),
-]
+    path("radio/activar/",          views_radio.activar_modo_radio,    name="activar_modo_radio"),
+    path("radio/desactivar/",       views_radio.desactivar_modo_radio,  name="desactivar_modo_radio"),
+    path("radio/estado/",           views_radio.estado_modo_radio,      name="estado_modo_radio"),
+    path("radio/imagen/subir/",     views_radio.subir_imagen_radio,     name="subir_imagen_radio"),
+    path("radio/imagen/eliminar/",  views_radio.eliminar_imagen_radio,  name="eliminar_imagen_radio"),
+    path("radio/imagen/estado/",    views_radio.estado_imagen_radio,    name="estado_imagen_radio"),
+
+]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

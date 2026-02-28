@@ -3,19 +3,17 @@ RADIO MANAGER
 =============
 Modo radio: video con imagen estática + audio RTMP live.
 
-La imagen se configura via variable de entorno RADIO_IMAGE_PATH
-en .env.local o .env.production según el entorno.
+La imagen se lee desde canal.get_imagen_radio() — cada usuario
+tiene su propia imagen configurada desde Ajustes > Perfil.
 
 Pipeline:
-  [imagen.jpg loop] ──┐
-                       ├──► feeder → /program_switch/username → HLS maestro
-  [audio RTMP live] ──┘
-
-Las plataformas externas (YouTube, Facebook, etc.) ven la imagen + audio.
-El reproductor público puede mostrar la misma imagen o su propio overlay.
+  [imagen usuario loop] ──┐
+                           ├──► feeder → /program_switch/username → HLS maestro
+  [audio RTMP live]    ──┘
 """
 
 import os
+import tempfile
 import subprocess
 import time
 import threading
@@ -47,22 +45,30 @@ def _kill_after_delay(proc, delay_seconds, label="proceso-radio"):
 def start_radio_feeder(user, stream_key):
     """
     Lanza un feeder FFmpeg con imagen estática + audio RTMP
-    hacia /program_switch. La imagen se lee desde RADIO_IMAGE_PATH.
+    hacia /program_switch.
 
-    Plataformas externas (YouTube, Facebook) ven imagen + audio real.
+    La imagen se lee desde CanalTransmision.get_imagen_radio()
+    que devuelve radio_imagen_path del usuario o el fallback de settings.
     """
-    FFMPEG_BIN  = settings.FFMPEG_BIN_PATH
-    RTMP_HOST   = settings.RTMP_SERVER_HOST_INTERNAL
-    RTMP_PORT   = settings.RTMP_SERVER_PORT_INTERNAL
-    imagen_path = settings.RADIO_IMAGE_PATH
+    from core.models import CanalTransmision
+
+    FFMPEG_BIN = settings.FFMPEG_BIN_PATH
+    RTMP_HOST  = settings.RTMP_SERVER_HOST_INTERNAL
+    RTMP_PORT  = settings.RTMP_SERVER_PORT_INTERNAL
+
+    canal = CanalTransmision.objects.filter(usuario=user).first()
+    imagen_path = canal.get_imagen_radio() if canal else ""
 
     if not imagen_path:
-        raise ValueError("[RADIO] RADIO_IMAGE_PATH no está configurado en settings.")
+        raise ValueError(
+            "[RADIO] No tenés imagen de radio configurada. "
+            "Andá a Ajustes > Perfil para subirla."
+        )
 
     if not os.path.isfile(imagen_path):
         raise FileNotFoundError(
-            f"[RADIO] Imagen no encontrada: {imagen_path}. "
-            f"Configurá RADIO_IMAGE_PATH en tu .env.local o .env.production"
+            f"[RADIO] Imagen no encontrada en disco: {imagen_path}. "
+            f"Volvé a subir la imagen desde Ajustes > Perfil."
         )
 
     input_rtmp  = f"rtmp://{RTMP_HOST}:{RTMP_PORT}/live/{stream_key}"
@@ -81,7 +87,8 @@ def start_radio_feeder(user, stream_key):
         # ── Mapeo: video de [0], audio de [1] ───────────────────────
         "-map", "0:v",
         "-map", "1:a",
-        # ── Video: H.264 con imagen estática ────────────────────────
+        # ── Video: escalar a 1280x720 con letterbox ──────────────────
+        "-vf", "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:black",
         "-c:v", "libx264",
         "-preset", "ultrafast",
         "-tune", "stillimage",
@@ -93,8 +100,9 @@ def start_radio_feeder(user, stream_key):
         "-b:v", "300k",
         "-maxrate", "300k",
         "-bufsize", "600k",
-        # ── Audio: igual que feeder de video ────────────────────────
+        # ── Audio: resync para evitar disco rayado ───────────────────
         "-c:a", "aac",
+        "-af", "aresample=async=1000",
         "-b:a", "128k",
         "-ar", "44100",
         "-ac", "2",
@@ -105,7 +113,7 @@ def start_radio_feeder(user, stream_key):
 
     old = RADIO_FEEDER_PROCESSES.get(user.id)
 
-    log_path = f"/tmp/radio_feeder_{user.username}.log"
+    log_path = os.path.join(tempfile.gettempdir(), f"radio_feeder_{user.username}.log")
     logger.info(f"[RADIO] Iniciando feeder radio para {user.username} | imagen={imagen_path}")
 
     log_file = open(log_path, "w")

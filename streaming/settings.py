@@ -244,7 +244,7 @@ print("HLS_BASE_URL:", HLS_BASE_URL)
 print("RTMP_PUBLIC:", RTMP_SERVER_HOST_PUBLIC, RTMP_SERVER_PORT)
 print("RTMP_INTERNAL:", RTMP_SERVER_HOST_INTERNAL, RTMP_SERVER_PORT_INTERNAL)
 print("==================")
-
+'''
 # ======================================================
 # MODO RADIO
 # ======================================================
@@ -252,3 +252,5 @@ RADIO_IMAGE_PATH = os.getenv(
     "RADIO_IMAGE_PATH",
     str(BASE_DIR / "core" / "static" / "core" / "images" / "radio_en_vivo.jpeg")
 )
+'''
+
