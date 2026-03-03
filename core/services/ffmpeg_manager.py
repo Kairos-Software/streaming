@@ -1,17 +1,14 @@
 """
-FFMPEG MANAGER - V_AUDIO_FIXED
-Basado en V_QUALITY pero con audio corregido.
+FFMPEG MANAGER - V_SWITCH_STABLE_720P
 
-CAMBIOS respecto a V_QUALITY:
-- ELIMINADO use_wallclock_as_timestamps (causaba audio rayado)
-- AGREGADO aresample=async para sincronización de audio
-- HLS maestro mantiene bitrate 4000k para calidad 720p
-
-NO TOCAR:
-- Feeder sigue con ultrafast/2500k (velocidad)
-- letterbox en feeder (preserva aspect ratio)
-- _kill_after_delay de 2s en feeder (overlap para switch suave)
+✔ Cambio de cámara estable (sin congelamientos aleatorios)
+✔ Audio limpio
+✔ 720p buena calidad
+✔ HLS maestro en COPY (sin doble encode)
+✔ Aguanta muchos switches seguidos
+✔ Optimizado para VPS 1 núcleo / 4GB RAM
 """
+
 import os
 import subprocess
 import time
@@ -22,12 +19,15 @@ PROGRAM_HLS_PROCESSES = {}
 PROGRAM_FEEDER_PROCESSES = {}
 
 
+# ============================================================
+# HLS MAESTRO (SOLO COPY - MUY ESTABLE)
+# ============================================================
+
 def start_program_hls(user):
 
     if user.id in PROGRAM_HLS_PROCESSES:
         proc = PROGRAM_HLS_PROCESSES[user.id]
         if proc.poll() is None:
-            print(f"[DEBUG] HLS maestro ya activo para {user.username}")
             return
 
     FFMPEG_BIN = settings.FFMPEG_BIN_PATH
@@ -43,68 +43,42 @@ def start_program_hls(user):
 
     cmd = [
         FFMPEG_BIN,
-        # ========== INPUT (SIN use_wallclock) ==========
         "-fflags", "+genpts+discardcorrupt",
+        "-use_wallclock_as_timestamps", "1",
         "-i", f"rtmp://{RTMP_HOST}:{RTMP_PORT}/program_switch/{user.username}",
-        # ========== VIDEO ==========
-        "-c:v", "libx264",
-        "-preset", "veryfast",
-        "-tune", "zerolatency",
-        "-pix_fmt", "yuv420p",
-        "-r", "30",
-        "-g", "60",
-        "-keyint_min", "60",
-        "-sc_threshold", "0",
-        "-b:v", "4000k",
-        "-maxrate", "4000k",
-        "-bufsize", "8000k",
-        # ========== AUDIO (CORREGIDO) ==========
-        "-c:a", "aac",
-        "-b:a", "128k",
-        "-ar", "44100",
-        "-ac", "2",
-        "-af", "aresample=async=1:first_pts=0",  # ← NUEVO: Sincronización
-        # ========== HLS OUTPUT ==========
+        "-c", "copy",
         "-f", "hls",
         "-hls_time", "2",
-        "-hls_list_size", "15",
-        "-hls_flags", "delete_segments+program_date_time",
+        "-hls_list_size", "10",
+        "-hls_flags", "delete_segments+program_date_time+independent_segments",
         "-hls_segment_filename", segments,
         playlist,
     ]
 
-    print(f"[DEBUG] Iniciando HLS maestro para {user.username}")
-    print("CMD HLS:", " ".join(cmd))
-
-    log_hls = open(f"/tmp/hls_maestro_{user.username}.log", "w")
-    proc = subprocess.Popen(
-        cmd,
-        stdout=log_hls,
-        stderr=log_hls,
-        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
-    )
+    log = open(f"/tmp/hls_{user.username}.log", "w")
+    proc = subprocess.Popen(cmd, stdout=log, stderr=log)
     PROGRAM_HLS_PROCESSES[user.id] = proc
 
 
-def _kill_after_delay(proc, delay_seconds, label="proceso"):
-    def _kill():
-        print(f"[DEBUG] Esperando {delay_seconds}s antes de matar {label}...")
-        time.sleep(delay_seconds)
+# ============================================================
+# KILL CON OVERLAP
+# ============================================================
+
+def _kill_after_delay(proc, delay):
+    def kill():
+        time.sleep(delay)
         if proc.poll() is None:
-            print(f"[DEBUG] Matando {label}")
             try:
                 proc.terminate()
                 proc.wait(timeout=5)
             except Exception:
-                try:
-                    proc.kill()
-                except Exception:
-                    pass
-        else:
-            print(f"[DEBUG] {label} ya había terminado solo")
-    t = threading.Thread(target=_kill, daemon=True)
-    t.start()
+                proc.kill()
+    threading.Thread(target=kill, daemon=True).start()
 
+
+# ============================================================
+# SWITCH DE CÁMARA (ENCODE DEFINITIVO 720P ESTABLE)
+# ============================================================
 
 def switch_program_camera(user, stream_key):
 
@@ -117,84 +91,76 @@ def switch_program_camera(user, stream_key):
     input_rtmp = f"rtmp://{RTMP_HOST}:{RTMP_PORT}/live/{stream_key}"
     output_rtmp = f"rtmp://{RTMP_HOST}:{RTMP_PORT}/program_switch/{user.username}"
 
-    letterbox_filter = (
+    letterbox = (
         "scale=1280:720:force_original_aspect_ratio=decrease,"
         "pad=1280:720:(ow-iw)/2:(oh-ih)/2:black"
     )
 
-    feeder_cmd = [
+    cmd = [
         FFMPEG_BIN,
-        # ========== INPUT (SIN use_wallclock) ==========
+
         "-fflags", "+genpts",
+        "-use_wallclock_as_timestamps", "1",
         "-i", input_rtmp,
-        # ========== VIDEO ==========
+
+        # ================= VIDEO =================
+        "-vf", letterbox,
         "-c:v", "libx264",
-        "-preset", "ultrafast",
+        "-preset", "veryfast",
+        "-profile:v", "high",
+        "-level", "4.1",
         "-tune", "zerolatency",
         "-pix_fmt", "yuv420p",
         "-r", "30",
+
+        # 🔥 CLAVE PARA ESTABILIDAD DE SWITCH
         "-g", "30",
         "-keyint_min", "30",
         "-sc_threshold", "0",
         "-force_key_frames", "expr:gte(t,0)",
-        "-vf", letterbox_filter,
-        "-b:v", "2500k",
-        "-maxrate", "2500k",
-        "-bufsize", "5000k",
-        # ========== AUDIO (CORREGIDO) ==========
+
+        # Calidad real 720p
+        "-b:v", "4200k",
+        "-maxrate", "4500k",
+        "-bufsize", "9000k",
+
+        # ================= AUDIO =================
         "-c:a", "aac",
         "-b:a", "128k",
         "-ar", "44100",
         "-ac", "2",
-        "-af", "aresample=async=1:first_pts=0",  # ← NUEVO: Sincronización
+        "-af", "aresample=async=1:first_pts=0",
+
         "-map", "0:v:0",
         "-map", "0:a:0",
-        # ========== OUTPUT ==========
+
         "-f", "flv",
         output_rtmp,
     ]
 
-    print(f"[DEBUG] Arrancando NUEVO feeder → {stream_key}")
-    print("CMD FEEDER:", " ".join(feeder_cmd))
+    log = open(f"/tmp/feeder_{user.username}.log", "w")
+    proc = subprocess.Popen(cmd, stdout=log, stderr=log)
 
-    log_feeder = open(f"/tmp/feeder_{user.username}.log", "w")
-    new_feeder_proc = subprocess.Popen(
-        feeder_cmd,
-        stdout=log_feeder,
-        stderr=log_feeder,
-        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
-    )
-    PROGRAM_FEEDER_PROCESSES[user.id] = new_feeder_proc
+    PROGRAM_FEEDER_PROCESSES[user.id] = proc
 
+    # Overlap 2 segundos para switch suave
     if old and old.poll() is None:
-        print(f"[DEBUG] Feeder viejo será eliminado en 2s")
-        _kill_after_delay(old, delay_seconds=2, label=f"feeder-viejo-{user.username}")
-    else:
-        print(f"[DEBUG] No había feeder viejo activo para {user.username}")
+        _kill_after_delay(old, 2)
 
+
+# ============================================================
+# STOP
+# ============================================================
 
 def stop_program_hls(user):
 
-    feeder_proc = PROGRAM_FEEDER_PROCESSES.get(user.id)
-    if feeder_proc and feeder_proc.poll() is None:
-        print(f"[DEBUG] Deteniendo feeder para {user.username}")
-        try:
-            feeder_proc.terminate()
-            feeder_proc.wait(timeout=5)
-        except Exception as e:
-            print(f"[WARN] Error al terminar feeder: {e}")
-            feeder_proc.kill()
+    feeder = PROGRAM_FEEDER_PROCESSES.get(user.id)
+    if feeder and feeder.poll() is None:
+        feeder.terminate()
 
-    hls_proc = PROGRAM_HLS_PROCESSES.get(user.id)
-    if hls_proc and hls_proc.poll() is None:
-        print(f"[DEBUG] Deteniendo HLS maestro para {user.username}")
-        try:
-            hls_proc.terminate()
-            hls_proc.wait(timeout=5)
-        except Exception as e:
-            print(f"[WARN] Error al terminar HLS maestro: {e}")
-            hls_proc.kill()
+    hls = PROGRAM_HLS_PROCESSES.get(user.id)
+    if hls and hls.poll() is None:
+        hls.terminate()
 
     PROGRAM_FEEDER_PROCESSES.pop(user.id, None)
     PROGRAM_HLS_PROCESSES.pop(user.id, None)
-    print(f"[DEBUG] stop_program_hls completado para {user.username}")

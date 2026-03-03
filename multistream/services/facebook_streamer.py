@@ -1,8 +1,9 @@
 """
-FACEBOOK STREAMER - V_HLS_MIXED
-Video: copy
-Audio: aresample=async=1000
+FACEBOOK STREAMER - V_HLS_STABLE
+Lee del HLS maestro (igual que tu plataforma)
+El HLS maestro genera chunks continuos sin importar los cambios de cámara
 """
+import os
 import logging
 from django.conf import settings
 from multistream.models import CuentaFacebook
@@ -34,25 +35,28 @@ class FacebookStreamer(BaseStreamer):
 
     def build_ffmpeg_command(self, destination_url):
         ffmpeg_path = settings.FFMPEG_BIN_PATH
-        hls_source = f"http://127.0.0.1:8080/hls/program/{self.user.username}.m3u8"
-
+        
+        # ========== LEE DEL HLS MAESTRO (como tu plataforma) ==========
+        port = os.getenv('HLS_INTERNAL_PORT', '8080')
+        hls_source = f"http://127.0.0.1:{port}/hls/program/{self.user.username}.m3u8"
+        
         logger.info(f"[FACEBOOK] Source HLS: {hls_source}")
 
         command = [
             ffmpeg_path,
+            # ========== INPUT (HLS) ==========
             '-fflags', '+genpts+discardcorrupt',
             '-live_start_index', '-1',
             '-i', hls_source,
+            # ========== VIDEO (COPY) ==========
             '-c:v', 'copy',
-            '-c:a', 'aac',
-            '-af', 'aresample=async=1000',
-            '-b:a', '128k',
-            '-ar', '44100',
-            '-ac', '2',
+            # ========== AUDIO (COPY) ==========
+            '-c:a', 'copy',
+            # ========== OUTPUT ==========
             '-f', 'flv',
             '-flvflags', 'no_duration_filesize',
             destination_url
         ]
 
-        logger.info(f"[FACEBOOK] Comando listo → HLS mixed → stunnel → Facebook")
+        logger.info(f"[FACEBOOK] Comando listo → HLS copy → stunnel → Facebook")
         return command
