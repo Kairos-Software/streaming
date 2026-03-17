@@ -11,7 +11,7 @@ class ClienteForm(forms.ModelForm):
 
     class Meta:
         model = Cliente
-        fields = ["nombre", "apellido", "dni", "telefono", "direccion"]
+        fields = ["nombre", "apellido", "dni", "telefono", "direccion", "dominio"]  # ← solo esto cambia
 
     def __init__(self, *args, **kwargs):
         # Si viene un cliente existente, precargar datos de su User

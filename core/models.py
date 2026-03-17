@@ -13,6 +13,8 @@ class Cliente(models.Model):
     pin = models.CharField(max_length=10, blank=True, null=True,
                            help_text="PIN para confirmar conexión desde el panel")
 
+    dominio = models.CharField(max_length=253, blank=True, null=True, unique=True)
+
     activo = models.BooleanField(default=True)
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
@@ -35,6 +37,7 @@ class Cliente(models.Model):
     notif_live = models.BooleanField(default=True, verbose_name="Alerta de Transmisión")
     notif_chat_mentions = models.BooleanField(default=True, verbose_name="Menciones en Chat")
     notif_marketing = models.BooleanField(default=False, verbose_name="Novedades y Ofertas")
+
 
     def __str__(self):
         return f"{self.nombre} {self.apellido} ({self.user.email})"

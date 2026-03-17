@@ -34,6 +34,7 @@
                         <th>Nombre Completo</th>
                         <th>DNI</th>
                         <th>Teléfono</th>
+                        <th>Dominio</th>
                         <th>Estado</th>
                         <th>Última Actualización</th>
                         <th class="text-right">Acciones</th>
@@ -56,6 +57,7 @@
                                     </td>
                                     <td><input type="text" name="dni" class="table-input" value="{{ cliente.dni }}"></td>
                                     <td><input type="text" name="telefono" class="table-input" value="{{ cliente.telefono }}"></td>
+                                    <td><input type="text" name="dominio" class="table-input" value="{{ cliente.dominio|default:'' }}" placeholder="ejemplo.com"></td>
                                     <td>
                                         <label class="toggle-switch">
                                             <input type="checkbox" name="activo" {% if cliente.activo %}checked{% endif %}>
@@ -84,6 +86,7 @@
                                 <td>{{ cliente.nombre }} {{ cliente.apellido }}</td>
                                 <td>{{ cliente.dni }}</td>
                                 <td>{{ cliente.telefono }}</td>
+                                <td class="text-muted">{{ cliente.dominio|default:"—" }}</td>
                                 <td>
                                     {% if cliente.activo %}
                                         <span class="badge success">Activo</span>
@@ -110,7 +113,7 @@
 
                     {% empty %}
                         <tr>
-                            <td colspan="8" class="empty-state">
+                            <td colspan="9" class="empty-state">
                                 No hay usuarios registrados en el sistema.
                             </td>
                         </tr>
