@@ -1,19 +1,27 @@
-# Archivos de Python compilados (BASURA)
+# Python compilado
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
 
-# Base de datos (Para que no se suban tus usuarios de prueba)
+# Base de datos
 db.sqlite3
 
-# Variables de entorno (Claves secretas)
-.env.local
-
-# Carpeta de entorno virtual
+# Entornos virtuales
 venv/
 env/
+
+# Logs — MUY IMPORTANTE, esto es lo que te daba problemas
+*.log
+django.log
+
+# Archivos estáticos generados
+staticfiles/
 
 # Archivos de sistema operativo
 .DS_Store
 Thumbs.db
 
+# IDE
+.vscode/
+.idea/
