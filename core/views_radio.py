@@ -14,7 +14,12 @@ from channels.layers import get_channel_layer
 
 from core.models import CanalTransmision, StreamConnection
 from core.services.radio_manager import start_radio_feeder, stop_radio_feeder
-from core.services.ffmpeg_manager import switch_program_camera, PROGRAM_FEEDER_PROCESSES
+from core.services.ffmpeg_manager import (
+    switch_program_camera,
+    PROGRAM_FEEDER_PROCESSES,
+    stop_program_hls,
+    start_program_hls,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -74,8 +79,13 @@ def activar_modo_radio(request):
             feeder_proc.wait(timeout=3)
         except Exception as e:
             logger.warning(f"[RADIO] Error terminando feeder de cámara: {e}")
-        # Pequeño delay para que nginx-rtmp libere el slot
-        time.sleep(0.5)
+        time.sleep(2)  # Dar tiempo a que nginx-rtmp libere el slot
+
+    # ── Reiniciar HLS maestro para que tome el nuevo flujo (radio) ──
+    logger.info(f"[RADIO] Reiniciando HLS maestro antes de activar modo radio")
+    stop_program_hls(user)
+    time.sleep(1)
+    start_program_hls(user)
 
     try:
         start_radio_feeder(user, camara_on_air.stream_key)
@@ -102,7 +112,13 @@ def desactivar_modo_radio(request):
 
     # ── Detener feeder radio y esperar que libere el slot ──
     stop_radio_feeder(user)
-    time.sleep(0.5)
+    time.sleep(2)
+
+    # ── Reiniciar HLS maestro para que vuelva a tomar el flujo de video ──
+    logger.info(f"[RADIO] Reiniciando HLS maestro antes de desactivar modo radio")
+    stop_program_hls(user)
+    time.sleep(1)
+    start_program_hls(user)
 
     camara_on_air = StreamConnection.objects.filter(
         user=user,
